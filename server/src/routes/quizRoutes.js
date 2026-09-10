@@ -28,15 +28,17 @@ router.get('/network-info', (req, res) => {
 
     const wifi = addresses.find(a => /wi-fi|wlan|wireless/i.test(a.interface));
     const primaryIp = wifi ? wifi.ip : (addresses[0]?.ip || 'localhost');
+    const publicUrl = process.env.PUBLIC_URL || process.env.APP_URL || null;
 
     res.json({
       success: true,
       primaryIp,
+      publicUrl,
       addresses,
       port: 5173
     });
   } catch (err) {
-    res.json({ success: false, primaryIp: 'localhost', port: 5173 });
+    res.json({ success: false, primaryIp: 'localhost', publicUrl: null, port: 5173 });
   }
 });
 
