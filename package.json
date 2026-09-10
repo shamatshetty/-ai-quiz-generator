@@ -3,15 +3,16 @@
   "version": "1.0.0",
   "description": "Full-stack real-time multiplayer classroom quiz web app (React + Vite + TailwindCSS, Node.js + Express, Socket.IO, Prisma)",
   "scripts": {
-    "setup": "npm --prefix server install && npm --prefix client install && npm --prefix server run prisma:generate",
+    "setup": "npm --prefix server install && npm --prefix client install && node server/scripts/prepare-prisma.js",
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "dev": "concurrently -k \"npm run dev:server\" \"npm run dev:client\"",
     "seed": "npm --prefix server run seed",
     "simulate": "npm --prefix server run simulate",
-    "build": "npm --prefix client run build && npm --prefix server run prisma:generate",
+    "build": "node server/scripts/prepare-prisma.js && npm --prefix client run build",
     "start": "node server/src/server.js",
-    "deploy:setup": "npm --prefix server install && npm --prefix client install && npm --prefix server run prisma:generate && npm --prefix server run prisma:push && npm --prefix server run seed && npm --prefix client run build"
+    "deploy:build": "npm --prefix server install && npm --prefix client install && node server/scripts/prepare-prisma.js && npm --prefix client run build",
+    "deploy:setup": "npm run deploy:build"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
