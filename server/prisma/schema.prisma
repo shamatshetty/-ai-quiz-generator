@@ -1,7 +1,7 @@
 // Prisma Schema for Classroom Quiz
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 generator client {

@@ -11,7 +11,6 @@ import authRoutes from './routes/authRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import { setupSocketHandlers } from './socketHandlers.js';
 import prisma from './prisma.js';
-import { initDatabase } from '../scripts/init-db.js';
 
 dotenv.config();
 
@@ -77,23 +76,13 @@ app.set('io', io);
 setupSocketHandlers(io);
 
 // Graceful start
-async function startServer() {
-  try {
-    await initDatabase();
-  } catch (err) {
-    console.warn('⚠️ [Startup Warning] Database initialization deferred or encountered non-fatal error:', err.message);
-  }
-
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`=============================================`);
-    console.log(`🚀 Classroom Quiz Server running on port ${PORT} (0.0.0.0)`);
-    console.log(`📡 WebSocket ready for live multiplayer sessions`);
-    console.log(`🌐 Health check at: http://localhost:${PORT}/health`);
-    console.log(`=============================================`);
-  });
-}
-
-startServer();
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`=============================================`);
+  console.log(`🚀 Classroom Quiz Server running on port ${PORT} (0.0.0.0)`);
+  console.log(`📡 WebSocket ready for live multiplayer sessions`);
+  console.log(`🌐 Health check at: http://localhost:${PORT}/health`);
+  console.log(`=============================================`);
+});
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
