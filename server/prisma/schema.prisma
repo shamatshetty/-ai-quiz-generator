@@ -1,6 +1,6 @@
 // Prisma Schema for Classroom Quiz
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
