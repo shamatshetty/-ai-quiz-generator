@@ -1,0 +1,265 @@
+import React, { useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
+import { Users, Play, Copy, Check, Bot, Sparkles, Smartphone, ArrowRight, ArrowLeft } from 'lucide-react';
+import { useSocket } from '../../context/SocketContext';
+
+export default function HostLobby({
+  roomCode,
+  quizTitle,
+  totalQuestions,
+  players = [],
+  onStartQuiz,
+  onBack = null
+}) {
+  const { socket, serverUrl } = useSocket();
+  const [copied, setCopied] = useState(false);
+  const [simulating, setSimulating] = useState(false);
+  const [networkIp, setNetworkIp] = useState('10.198.50.8');
+
+  // Fetch local network IP from server so mobile devices on the same Wi-Fi can join
+  React.useEffect(() => {
+    fetch(`${serverUrl}/api/network-info`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.primaryIp && data.primaryIp !== 'localhost') {
+          setNetworkIp(data.primaryIp);
+        }
+      })
+      .catch(() => {});
+  }, [serverUrl]);
+
+  // Compute join URL: If on localhost, use local Wi-Fi IP so phones can scan & reach it!
+  const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const effectiveHost = (isLocalHost && networkIp) ? `${networkIp}:${window.location.port || '5173'}` : window.location.host;
+  const joinUrl = `${window.location.protocol}//${effectiveHost}/?room=${roomCode}`;
+
+  const copyJoinLink = () => {
+    navigator.clipboard.writeText(joinUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSimulate = (count) => {
+    if (!socket || simulating) return;
+    setSimulating(true);
+    socket.emit('host:simulate-students', { roomCode, count }, (res) => {
+      setSimulating(false);
+    });
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+      {/* Back Button */}
+      {onBack && (
+        <div>
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all shadow-md cursor-pointer hover:scale-105 active:scale-95 group"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1 text-purple-400" />
+            <span>&larr; Back to Quizzes (Cancel Room)</span>
+          </button>
+        </div>
+      )}
+
+      {/* Top Banner with Big Room Code & QR */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        {/* Left 2 Cols: Room Code & Instructions for Projector */}
+        <div className="lg:col-span-2 glass-panel-glow rounded-3xl p-6 sm:p-10 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30 uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5" />
+                Live Classroom Lobby
+              </div>
+              <span className="text-xs font-bold text-slate-400">
+                {totalQuestions} Questions
+              </span>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl font-heading font-black text-white tracking-tight mb-2">
+              {quizTitle}
+            </h1>
+
+            {/* Assessment Feature Badges */}
+            <div className="flex flex-wrap gap-1.5 mb-6">
+              <span className="px-2.5 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300 text-[11px] font-bold">
+                🎲 Random Questions
+              </span>
+              <span className="px-2.5 py-1 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[11px] font-bold">
+                🔀 Random Options
+              </span>
+              <span className="px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold">
+                💾 Auto-Save Answer
+              </span>
+              <span className="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-bold">
+                🔒 1 Attempt Limit
+              </span>
+              <span className="px-2.5 py-1 rounded-xl bg-teal-500/15 border border-teal-500/30 text-teal-300 text-[11px] font-bold">
+                ⏱️ Auto Submit
+              </span>
+              <span className="px-2.5 py-1 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-[11px] font-bold">
+                📊 Auto Evaluation (+1 Pt)
+              </span>
+            </div>
+
+            <p className="text-slate-400 text-sm sm:text-base mb-6">
+              Students: Join using your phone or laptop. Go to website and enter room code!
+            </p>
+
+            {/* Huge Projector Room Code */}
+            <div className="bg-slate-900/90 border-2 border-purple-500/40 rounded-3xl p-6 sm:p-8 text-center relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-amber-400" />
+              <span className="text-xs font-black uppercase tracking-widest text-purple-300 block mb-2">
+                Join on Phone / Laptop at <span className="underline text-white font-bold">{effectiveHost}</span> with Quiz PIN:
+              </span>
+              <div className="font-mono text-5xl sm:text-7xl font-black text-amber-400 tracking-widest selection:bg-amber-400 selection:text-black py-2">
+                {roomCode}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={copyJoinLink}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 flex items-center gap-2 transition-colors"
+                >
+                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  <span>{copied ? 'Link Copied!' : 'Copy Direct Join Link'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Start Quiz Action */}
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-800/80 mt-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold text-xl">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-2xl font-black font-heading text-white">
+                  {players.length}
+                </div>
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Students Joined
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={onStartQuiz}
+              disabled={players.length === 0}
+              className={`w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-heading font-black text-lg rounded-2xl shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all transform active:scale-95 ${
+                players.length === 0 ? 'opacity-50 cursor-not-allowed' : 'animate-bounce-subtle'
+              }`}
+            >
+              <Play className="w-6 h-6 fill-current" />
+              <span>Start Quiz Now</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Right Col: QR Code & Instant Load Simulator */}
+        <div className="space-y-6 flex flex-col">
+          {/* QR Code Card */}
+          <div className="glass-panel rounded-3xl p-6 flex flex-col items-center justify-center text-center">
+            <div className="p-4 bg-white rounded-2xl shadow-xl mb-3">
+              <QRCodeSVG value={joinUrl} size={170} level="M" />
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200 mb-1">
+              <Smartphone className="w-4 h-4 text-purple-400" />
+              <span>Scan to Join on Phone</span>
+            </div>
+            <div className="text-[11px] text-purple-300 font-mono break-all px-2">
+              {joinUrl}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-2 bg-slate-800/70 py-1 px-2.5 rounded-lg border border-slate-700/60">
+              📶 Phone must be on same Wi-Fi
+            </div>
+          </div>
+
+          {/* Quick Bot Simulator for Instant Testing */}
+          <div className="glass-panel rounded-3xl p-6 flex-1 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-bold text-white mb-2">
+                <Bot className="w-4 h-4 text-amber-400" />
+                <span>Test 100+ Students Simulation</span>
+              </div>
+              <p className="text-xs text-slate-400 mb-4">
+                Spin up virtual student clients that connect, answer questions, and compete live on the leaderboard.
+              </p>
+
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => handleSimulate(5)}
+                  disabled={simulating}
+                  className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition-colors"
+                >
+                  +5 Bots
+                </button>
+                <button
+                  onClick={() => handleSimulate(20)}
+                  disabled={simulating}
+                  className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition-colors"
+                >
+                  +20 Bots
+                </button>
+                <button
+                  onClick={() => handleSimulate(50)}
+                  disabled={simulating}
+                  className="py-2.5 px-3 rounded-xl bg-purple-600/30 hover:bg-purple-600/40 text-xs font-bold text-purple-200 border border-purple-500/40 transition-colors"
+                >
+                  +50 Bots
+                </button>
+              </div>
+            </div>
+
+            {simulating && (
+              <p className="text-xs text-amber-400 font-semibold mt-3 animate-pulse">
+                Spawning simulated students...
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Live Grid of Joined Students */}
+      <div className="glass-panel rounded-3xl p-6 sm:p-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold font-heading text-white flex items-center gap-2">
+            <span>Joined Students</span>
+            <span className="text-sm font-normal text-slate-400">({players.length})</span>
+          </h2>
+          {players.length === 0 && (
+            <span className="text-xs text-slate-400 italic">Waiting for players to enter code...</span>
+          )}
+        </div>
+
+        {players.length === 0 ? (
+          <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-2xl">
+            <Smartphone className="w-10 h-10 text-slate-600 mx-auto mb-2 animate-bounce" />
+            <p className="text-slate-400 font-medium text-sm">
+              Waiting for students to join...
+            </p>
+            <p className="text-slate-500 text-xs mt-1">
+              Tip: Click "+20 Bots" above to simulate a full classroom instantly!
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-96 overflow-y-auto pr-2">
+            {players.map((p, idx) => (
+              <div
+                key={p.sessionToken || idx}
+                className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-slate-800/90 border border-slate-700/80 shadow-sm animate-fadeIn transform transition-transform hover:scale-105"
+              >
+                <span className="text-2xl select-none">{p.avatar || '🦊'}</span>
+                <span className="text-sm font-bold text-slate-200 truncate">{p.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,97 @@
+// Prisma Schema for Classroom Quiz
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      String   // "TEACHER" or "STUDENT"
+  avatar    String?  // Avatar emoji or seed e.g. "🚀"
+  subject   String?  // Teaching subject / department e.g. "Computer Science"
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  quizzes        Quiz[]
+  playerSessions PlayerSession[]
+}
+
+model Quiz {
+  id               String         @id @default(cuid())
+  title            String
+  subject          String
+  description      String?
+  defaultTimeLimit Int            @default(20) // in seconds
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  authorId         String?
+  author           User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  questions        Question[]
+  sessions         QuizSession[]
+}
+
+model Question {
+  id                 String            @id @default(cuid())
+  quizId             String
+  quiz               Quiz              @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  text               String
+  options            String            // JSON stringified array of 4 options e.g. ["Option A", "Option B", ...]
+  correctOptionIndex Int               // 0, 1, 2, or 3
+  timeLimit          Int?              // Optional override per question
+  explanation        String?           // Optional post-answer learning tip
+  orderIndex         Int               @default(0)
+  answers            AnswerRecord[]
+}
+
+model QuizSession {
+  id                   String          @id @default(cuid())
+  roomCode             String          @unique
+  quizId               String
+  quiz                 Quiz            @relation(fields: [quizId], references: [id])
+  status               String          @default("LOBBY") // LOBBY, QUESTION, REVEAL, LEADERBOARD, PRIZE, ENDED
+  currentQuestionIndex Int             @default(0)
+  createdAt            DateTime        @default(now())
+  startedAt            DateTime?
+  endedAt              DateTime?
+  players              PlayerSession[]
+  answers              AnswerRecord[]
+}
+
+model PlayerSession {
+  id            String         @id @default(cuid())
+  sessionToken  String         // Persistent UUID in student's localStorage
+  userId        String?
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name          String
+  avatar        String         // Emoji or avatar seed
+  quizSessionId String
+  quizSession   QuizSession    @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
+  score         Int            @default(0)
+  streak        Int            @default(0)
+  rank          Int            @default(0)
+  joinedAt      DateTime       @default(now())
+  answers       AnswerRecord[]
+
+  @@unique([sessionToken, quizSessionId])
+}
+
+model AnswerRecord {
+  id             String        @id @default(cuid())
+  quizSessionId  String
+  quizSession    QuizSession   @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  playerSessionId String
+  playerSession  PlayerSession @relation(fields: [playerSessionId], references: [id], onDelete: Cascade)
+  selectedOption Int           // 0, 1, 2, 3 or -1 for timeout
+  isCorrect      Boolean       @default(false)
+  timeTakenMs    Int           @default(0)
+  pointsAwarded  Int           @default(0)
+  answeredAt     DateTime      @default(now())
+}

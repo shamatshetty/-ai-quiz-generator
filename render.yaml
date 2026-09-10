@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: quizpop-classroom
+    env: node
+    plan: free
+    buildCommand: npm run deploy:setup
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
