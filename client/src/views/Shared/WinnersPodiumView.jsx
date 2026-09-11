@@ -13,11 +13,13 @@ export default function WinnersPodiumView({
   roomCode,
   isHost = false,
   onPlayAgain,
+  onReturnToDashboard,
   serverUrl,
   currentUserToken = null
 }) {
   const [activeTab, setActiveTab] = useState('review'); // 'review' | 'podium'
   const [isExporting, setIsExporting] = useState(false);
+  const [returnCountdown, setReturnCountdown] = useState(5);
 
   const {
     podium = {},
@@ -54,6 +56,24 @@ export default function WinnersPodiumView({
 
     return () => clearInterval(interval);
   }, []);
+
+  // Auto-return to dashboard after 5 seconds for students
+  useEffect(() => {
+    if (isHost || !onReturnToDashboard) return;
+
+    const timer = setInterval(() => {
+      setReturnCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          onReturnToDashboard();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isHost, onReturnToDashboard]);
 
   function randomInRange(min, max) {
     return Math.random() * (max - min) + min;
@@ -174,6 +194,32 @@ export default function WinnersPodiumView({
             <span>Winners Podium & Standings</span>
           </button>
         </div>
+
+        {/* 5-Second Auto-Return Countdown Banner for Students */}
+        {!isHost && onReturnToDashboard && (
+          <div className="max-w-xl mx-auto p-4 rounded-2xl bg-gradient-to-r from-purple-950/90 via-slate-900/95 to-indigo-950/90 border border-purple-500/50 shadow-2xl flex items-center justify-between gap-4 animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/30 border border-purple-400/60 flex items-center justify-center font-heading font-black text-amber-300 text-lg shrink-0 animate-pulse">
+                {returnCountdown}s
+              </div>
+              <div className="text-left">
+                <p className="text-white font-heading font-bold text-sm">
+                  Returning to Dashboard in {returnCountdown}s...
+                </p>
+                <p className="text-xs text-purple-300">
+                  Scores recorded in database
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onReturnToDashboard}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-heading font-black text-xs uppercase tracking-wider shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            >
+              Back Now &rarr;
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ------------------------------------------------------------------ */}
@@ -325,6 +371,15 @@ export default function WinnersPodiumView({
           >
             <Download className="w-5 h-5" />
             <span>Download My Scorecard (CSV)</span>
+          </button>
+        )}
+
+        {!isHost && onReturnToDashboard && (
+          <button
+            onClick={onReturnToDashboard}
+            className="px-6 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-heading font-black rounded-2xl shadow-lg shadow-purple-600/30 flex items-center gap-2 transition-all transform active:scale-95 cursor-pointer"
+          >
+            <span>Back to Dashboard ({returnCountdown}s)</span>
           </button>
         )}
 

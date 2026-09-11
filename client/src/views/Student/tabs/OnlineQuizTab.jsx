@@ -18,7 +18,8 @@ import {
   Play,
   Download,
   Printer,
-  FileSpreadsheet
+  FileSpreadsheet,
+  LayoutDashboard
 } from 'lucide-react';
 import TimerRing from '../../../components/TimerRing';
 import soundManager from '../../../utils/sound';
@@ -45,7 +46,8 @@ export default function OnlineQuizTab({
   serverUrl,
   initialSubject = '',
   onQuizCompleted,
-  onViewReview
+  onViewReview,
+  onReturnToDashboard
 }) {
   // Phase: 'setup' | 'loading' | 'active' | 'completed'
   const [phase, setPhase] = useState('setup');
@@ -69,10 +71,45 @@ export default function OnlineQuizTab({
   const [remainingSeconds, setRemainingSeconds] = useState(20);
   const timerRef = useRef(null);
 
+  // 5-second Auto-Redirect to Dashboard State
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
+  const redirectTimerRef = useRef(null);
+
+  const handleReturnToDashboard = () => {
+    if (redirectTimerRef.current) clearInterval(redirectTimerRef.current);
+    setPhase('setup');
+    setSubject('');
+    if (typeof onReturnToDashboard === 'function') {
+      onReturnToDashboard();
+    }
+  };
+
+  // Auto-redirect timer when quiz completes (5 seconds)
+  useEffect(() => {
+    if (phase !== 'completed') return;
+
+    setRedirectCountdown(5);
+    redirectTimerRef.current = setInterval(() => {
+      setRedirectCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(redirectTimerRef.current);
+          handleReturnToDashboard();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (redirectTimerRef.current) clearInterval(redirectTimerRef.current);
+    };
+  }, [phase]);
+
   // Clear timeouts on component unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (redirectTimerRef.current) clearInterval(redirectTimerRef.current);
     };
   }, []);
 
@@ -593,6 +630,31 @@ export default function OnlineQuizTab({
             </p>
           </div>
 
+          {/* 5-Second Auto-Return Countdown Banner */}
+          <div className="max-w-xl mx-auto p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-purple-950/90 via-slate-900/95 to-indigo-950/90 border border-purple-500/50 shadow-2xl flex items-center justify-between gap-4 animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-purple-500/30 border border-purple-400/60 flex items-center justify-center font-heading font-black text-amber-300 text-xl shadow-inner shrink-0 animate-pulse">
+                {redirectCountdown}s
+              </div>
+              <div className="text-left">
+                <p className="text-white font-heading font-black text-sm sm:text-base">
+                  Returning to Dashboard in {redirectCountdown} second{redirectCountdown === 1 ? '' : 's'}...
+                </p>
+                <p className="text-xs text-purple-300">
+                  Your score and performance have been auto-saved
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleReturnToDashboard}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-heading font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-purple-600/30 shrink-0 hover:scale-105 active:scale-95 flex items-center gap-1.5"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Back Now</span>
+            </button>
+          </div>
+
           {/* Stats Badges */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto">
             <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
@@ -732,11 +794,21 @@ export default function OnlineQuizTab({
 
             <button
               type="button"
+              onClick={handleReturnToDashboard}
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-heading font-black text-sm flex items-center gap-2 shadow-lg shadow-purple-600/30 transition-all cursor-pointer hover:scale-105 active:scale-95"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span>Back to Dashboard ({redirectCountdown}s)</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => {
+                if (redirectTimerRef.current) clearInterval(redirectTimerRef.current);
                 setPhase('setup');
                 setSubject('');
               }}
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-heading font-black text-sm flex items-center gap-2 shadow-lg shadow-purple-600/30 transition-all cursor-pointer hover:scale-105 active:scale-95"
+              className="px-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-purple-500/50 text-slate-200 hover:text-white font-heading font-black text-sm flex items-center gap-2 shadow-lg transition-all cursor-pointer hover:scale-105 active:scale-95"
             >
               <RotateCcw className="w-4 h-4" />
               <span>Take Another Quiz</span>

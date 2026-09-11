@@ -675,6 +675,19 @@ export default function App() {
                 roomCode={roomCode}
                 isHost={false}
                 currentUserToken={sessionToken}
+                onReturnToDashboard={() => {
+                  if (user?.role === 'STUDENT') {
+                    setScreen('student-dashboard');
+                  } else {
+                    setScreen('home');
+                    setRole(null);
+                  }
+                  setRoomCode('');
+                  setPlayers([]);
+                  setQuestionData(null);
+                  setLeaderboardData(null);
+                  setPodiumData(null);
+                }}
                 onPlayAgain={() => {
                   setScreen('student-join');
                   setRole('student');

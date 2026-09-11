@@ -599,6 +599,10 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '' }) {
                   token={token}
                   serverUrl={serverUrl}
                   initialSubject={selectedPracticeSubject}
+                  onReturnToDashboard={() => {
+                    setActiveTab('overview');
+                    fetchDashboardData();
+                  }}
                   onQuizCompleted={() => {
                     fetchDashboardData();
                   }}
