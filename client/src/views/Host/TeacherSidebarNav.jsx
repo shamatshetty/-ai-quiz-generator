@@ -36,7 +36,9 @@ export default function TeacherSidebarNav({
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to sign out of the Teacher Console?')) {
+    if (typeof onBack === 'function') {
+      onBack();
+    } else {
       logout();
     }
   };

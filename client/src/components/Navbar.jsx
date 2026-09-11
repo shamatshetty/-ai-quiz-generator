@@ -27,10 +27,8 @@ export default function Navbar({
   };
 
   const handleSignOut = () => {
-    if (window.confirm('Are you sure you want to sign out?')) {
-      logout();
-      if (onLogout) onLogout();
-    }
+    logout();
+    if (onLogout) onLogout();
   };
 
   const displayName = playerName || user?.name || '';

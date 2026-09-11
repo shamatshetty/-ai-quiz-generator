@@ -43,7 +43,9 @@ export default function SidebarNav({
   const { isMuted, toggleSound } = useSocket();
 
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to sign out?')) {
+    if (typeof onBack === 'function') {
+      onBack();
+    } else {
       logout();
     }
   };
