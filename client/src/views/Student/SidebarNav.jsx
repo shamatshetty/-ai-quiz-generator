@@ -174,61 +174,8 @@ export default function SidebarNav({
         })}
       </nav>
 
-      {/* 4. Live Quiz Quick Launcher Box */}
+      {/* 4. Footer Utilities & Sign Out */}
       <div className="p-3 border-t border-slate-800/80">
-        {!isCollapsed ? (
-          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-950/60 via-purple-950/40 to-slate-900 border border-purple-500/30 shadow-lg space-y-2.5 animate-glow-breathe">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-purple-600 flex items-center justify-center text-white shrink-0">
-                <Zap className="w-4 h-4 text-amber-300 animate-zap-pulse" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="text-xs font-bold text-white truncate font-heading">Live Classroom</h4>
-                <p className="text-[11px] text-purple-300/80 truncate">Have a teacher PIN?</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenJoinModal}
-              className="shimmer-btn w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-heading font-bold text-xs shadow-md shadow-purple-600/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-95"
-            >
-              <span>Enter Room PIN</span>
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-sparkle" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={onOpenJoinModal}
-              title="Join Live Quiz Session"
-              className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-500/30 hover:scale-105 active:scale-95 transition-transform cursor-pointer animate-glow-breathe"
-            >
-              <Zap className="w-5 h-5 text-amber-300" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* 5. Footer Utilities & Sign Out */}
-      <div className="p-3 border-t border-slate-800/80 space-y-1">
-        <button
-          type="button"
-          onClick={() => {
-            if (typeof onBack === 'function') {
-              onBack();
-            } else {
-              logout();
-            }
-          }}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer mb-1 ${
-            isCollapsed ? 'justify-center' : ''
-          }`}
-          title="Back to Login Page"
-        >
-          <ArrowLeft className="w-4 h-4 text-purple-400" />
-          {!isCollapsed && <span>Back to Login</span>}
-        </button>
         <div className="flex items-center justify-between gap-1">
           {/* Sound Toggle */}
           <button
