@@ -182,18 +182,24 @@ export default function OnlineQuizTab({
 
     if (timerRef.current) clearInterval(timerRef.current);
 
-    setSelectedOption(optIdx);
-
     const isCorrect = optIdx === currentQuestion.correctOptionIndex;
     const pointsAwarded = isCorrect ? 100 + streak * 20 : 0;
     const updatedScore = score + pointsAwarded;
 
+    try {
+      if (isCorrect) {
+        soundManager.playCorrect();
+      } else {
+        soundManager.playIncorrect();
+      }
+    } catch (e) {
+      // ignore audio errors
+    }
+
     if (isCorrect) {
-      soundManager.playCorrect();
       setScore(updatedScore);
       setStreak((prev) => prev + 1);
     } else {
-      soundManager.playWrong();
       setStreak(0);
     }
 
@@ -214,8 +220,11 @@ export default function OnlineQuizTab({
 
   const handleTimeExpired = () => {
     if (selectedOption !== null) return;
-    setSelectedOption(-1); // timeout
-    soundManager.playWrong();
+
+    try {
+      soundManager.playIncorrect();
+    } catch (e) {}
+
     setStreak(0);
 
     const timeoutAnswer = {
@@ -499,7 +508,7 @@ export default function OnlineQuizTab({
                     remainingSeconds={remainingSeconds}
                     totalSeconds={20}
                     size="sm"
-                    isPaused={selectedOption !== null}
+                    isPaused={false}
                   />
                 </div>
               )}

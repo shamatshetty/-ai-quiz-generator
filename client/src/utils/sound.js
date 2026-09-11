@@ -89,6 +89,10 @@ class SoundFX {
     } catch (e) {}
   }
 
+  playWrong() {
+    this.playIncorrect();
+  }
+
   playPrize() {
     if (this.muted) return;
     try {
