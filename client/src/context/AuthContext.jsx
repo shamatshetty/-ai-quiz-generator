@@ -136,7 +136,7 @@ export function AuthProvider({ children }) {
 
   const googleLogin = async ({ email, name, avatar, role, googleId, token: googleToken }) => {
     try {
-      const res = await fetch(`${SERVER_URL}/api/auth/google`, {
+      const res = await fetch(`${SERVER_URL}/api/auth/oauth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name, avatar, role, googleId, token: googleToken })
@@ -152,19 +152,78 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const resetPassword = async ({ email, newPassword }) => {
+  const microsoftLogin = async ({ email, name, avatar, role, microsoftId, accountId }) => {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/auth/oauth/microsoft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, avatar, role, microsoftId, accountId })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Microsoft sign-in failed');
+      }
+      saveAuthData(data.token, data.user);
+      return data.user;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const requestPasswordReset = async (emailToReset) => {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailToReset })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        const error = new Error(data.error || 'Failed to send password reset code');
+        error.code = data.code;
+        error.retryAfterSec = data.retryAfterSec;
+        throw error;
+      }
+      return data;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const verifyResetToken = async ({ email, token, otpCode }) => {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/auth/verify-reset-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token, otpCode })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        const error = new Error(data.error || 'Invalid or expired verification code');
+        error.code = data.code;
+        throw error;
+      }
+      return data;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const confirmPasswordReset = async ({ email, token, otpCode, newPassword }) => {
     try {
       const res = await fetch(`${SERVER_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, newPassword })
+        body: JSON.stringify({ email, token, otpCode, newPassword })
       });
       const data = await res.json();
       if (!data.success) {
-        throw new Error(data.error || 'Password reset failed');
+        const error = new Error(data.error || 'Failed to update password');
+        error.code = data.code;
+        throw error;
       }
-      saveAuthData(data.token, data.user);
-      return data.user;
+      // Note: We deliberately DO NOT auto-login as per security requirement
+      return data;
     } catch (err) {
       throw err;
     }
@@ -206,7 +265,10 @@ export function AuthProvider({ children }) {
         register,
         demoLogin,
         googleLogin,
-        resetPassword,
+        microsoftLogin,
+        requestPasswordReset,
+        verifyResetToken,
+        confirmPasswordReset,
         checkEmail,
         logout,
         updateUser

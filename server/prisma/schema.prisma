@@ -16,6 +16,8 @@ model User {
   role      String   // "TEACHER" or "STUDENT"
   avatar    String?  // Avatar emoji or seed e.g. "🚀"
   subject   String?  // Teaching subject / department e.g. "Computer Science"
+  provider       String?         @default("local") // "local", "google", "microsoft"
+  providerId     String?
   lastLoginAt    DateTime?       @default(now())
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -95,4 +97,29 @@ model AnswerRecord {
   timeTakenMs    Int           @default(0)
   pointsAwarded  Int           @default(0)
   answeredAt     DateTime      @default(now())
+}
+
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  email      String
+  tokenHash  String    @unique
+  otpHash    String?
+  expiresAt  DateTime
+  used       Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  @@index([email])
+}
+
+model AuthAuditLog {
+  id        String    @id @default(cuid())
+  event     String    // "LOGIN_SUCCESS", "LOGIN_FAILED", "FORGOT_PASSWORD_REQUEST", "PASSWORD_RESET_SUCCESS", "OAUTH_LOGIN"
+  email     String?
+  ipAddress String?
+  userAgent String?
+  details   String?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([event])
 }

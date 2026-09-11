@@ -28,7 +28,8 @@ import { useAuth } from '../../context/AuthContext';
 import { AVATARS, getRandomAvatar } from '../../utils/avatars';
 import AIEducationBackground from '../../components/AIEducationBackground';
 import soundManager from '../../utils/sound';
-import GoogleSignInModal from './GoogleSignInModal';
+import OAuthAccountPickerModal from './OAuthAccountPickerModal';
+import ForgotPasswordModal from './ForgotPasswordModal';
 
 // Helper to retrieve remembered credentials from localStorage
 const getSavedCredentials = (targetRole = null) => {
@@ -146,16 +147,29 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
   // Loading & Error States
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [showOAuthModal, setShowOAuthModal] = useState(false);
+  const [oauthProvider, setOauthProvider] = useState('google');
   const [error, setError] = useState('');
   const [errorCode, setErrorCode] = useState('');
+  const [successBanner, setSuccessBanner] = useState('');
   const [emailAlreadyRegistered, setEmailAlreadyRegistered] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
-  const [newPasswordInput, setNewPasswordInput] = useState('');
-  const [resetError, setResetError] = useState('');
-  const [resetLoading, setResetLoading] = useState(false);
+
+  // Auto-detect URL query parameter for password reset links (?resetToken=XYZ)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const tokenParam = params.get('resetToken') || params.get('token');
+      const emailParam = params.get('email');
+      if (tokenParam) {
+        if (emailParam) setForgotEmail(emailParam);
+        setShowForgotPassword(true);
+      }
+    } catch (e) {
+      console.warn('URL parse notice:', e);
+    }
+  }, []);
 
   const isTeacher = role === 'TEACHER';
 
@@ -287,72 +301,14 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handlePasswordResetSuccess = (emailAddress, switchMode = 'login') => {
+    setMode(switchMode);
+    if (emailAddress) setEmail(emailAddress);
+    setPassword('');
+    setPasswordTouched(false);
     setError('');
-    setShowGoogleModal(true);
-  };
-
-  const handleGoogleAuthSuccess = async ({ name, email, avatar, role: googleRole, googleId }) => {
-    setGoogleLoading(true);
-    setError('');
-    try {
-      const loggedUser = await googleLogin({
-        email,
-        name,
-        avatar,
-        role: googleRole || role,
-        googleId
-      });
-      if (onAuthSuccess) {
-        onAuthSuccess(loggedUser);
-      }
-    } catch (err) {
-      setError(err.message || 'Google Sign-In failed. Please try again.');
-      triggerCardShake();
-      throw err;
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleForgotPasswordSubmit = async (e) => {
-    e.preventDefault();
-    setResetError('');
-    const targetEmail = (forgotEmail || emailInputRef.current?.value || email || '').trim();
-    if (!targetEmail) {
-      setResetError('Please enter your email address');
-      return;
-    }
-    if (!newPasswordInput || newPasswordInput.length < 4) {
-      setResetError('New password must be at least 4 characters');
-      return;
-    }
-
-    setResetLoading(true);
-    try {
-      const loggedUser = await resetPassword({
-        email: targetEmail,
-        newPassword: newPasswordInput
-      });
-
-      setEmail(targetEmail);
-      setPassword(newPasswordInput);
-
-      try {
-        const userRole = loggedUser?.role || role;
-        const creds = { email: targetEmail, password: newPasswordInput, role: userRole, savedAt: Date.now() };
-        localStorage.setItem('quiz_remember_me', JSON.stringify(creds));
-        localStorage.setItem(`quiz_remember_${userRole}`, JSON.stringify(creds));
-      } catch {}
-
-      setShowForgotPassword(false);
-      if (onAuthSuccess) {
-        onAuthSuccess(loggedUser);
-      }
-    } catch (err) {
-      setResetError(err.message || 'Failed to reset password. Please try again.');
-    } finally {
-      setResetLoading(false);
+    if (switchMode === 'login') {
+      setSuccessBanner('Password updated successfully. Please log in with your new password.');
     }
   };
 
@@ -570,6 +526,14 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
               </button>
             </div>
           </div>
+
+          {/* Success Notification Banner (e.g. after password reset) */}
+          {successBanner && (
+            <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 text-xs font-semibold flex items-center gap-2.5 animate-scale-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{successBanner}</span>
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -840,8 +804,6 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                   type="button"
                   onClick={() => {
                     setForgotEmail(emailInputRef.current?.value || email);
-                    setNewPasswordInput('');
-                    setResetError('');
                     setShowForgotPassword(true);
                   }}
                   className="text-purple-400 hover:text-purple-300 font-semibold transition-colors cursor-pointer"
@@ -913,8 +875,6 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                       type="button"
                       onClick={() => {
                         setForgotEmail(emailInputRef.current?.value || email);
-                        setNewPasswordInput('');
-                        setResetError('');
                         setShowForgotPassword(true);
                       }}
                       className="text-purple-300 hover:text-white underline font-bold cursor-pointer"
@@ -924,7 +884,10 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                     <span className="text-slate-500">•</span>
                     <button
                       type="button"
-                      onClick={handleGoogleSignIn}
+                      onClick={() => {
+                        setOauthProvider('google');
+                        setShowOAuthModal(true);
+                      }}
                       className="text-cyan-300 hover:text-white underline font-bold cursor-pointer"
                     >
                       Sign in with Google
@@ -937,7 +900,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
             {/* Primary CTA Button with Gradient Fill, Hover Scale/Glow & Loading Spinner */}
             <button
               type="submit"
-              disabled={loading || demoLoading || googleLoading}
+              disabled={loading || demoLoading}
               className={`group w-full py-3.5 font-heading font-black text-sm sm:text-base rounded-xl flex items-center justify-center gap-2 transition-all duration-300 transform active:scale-[0.97] hover:scale-[1.01] disabled:opacity-50 cursor-pointer shadow-xl bg-[length:200%_auto] hover:bg-right ${
                 isTeacher
                   ? 'bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 text-slate-950 shadow-emerald-600/30 hover:shadow-emerald-500/50'
@@ -970,38 +933,52 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
             </span>
           </div>
 
-          {/* Social Sign-In (Google) & Quick Demo Logins */}
+          {/* Official Email Accounts (OAuth 2.0 Account Pickers) */}
           <div className="space-y-2">
-            {/* Sign in with Google Button with Hover Lift Effect & Border Glow */}
-            <button
-              type="button"
-              disabled={loading || demoLoading || googleLoading}
-              onClick={handleGoogleSignIn}
-              className="w-full py-2.5 px-4 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-slate-700 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] text-slate-200 text-xs font-bold flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
-            >
-              {googleLoading ? (
-                <div className="flex items-center gap-2 animate-fade-scale">
-                  <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
-                  <span>Connecting with Google...</span>
-                </div>
-              ) : (
-                <>
-                  {/* Official Google SVG Icon */}
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
-                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z" />
-                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.97 0 12s.45 3.82 1.25 5.42l4.03-3.15z" />
-                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-                  </svg>
-                  <span>Sign in with Google</span>
-                </>
-              )}
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* Google OAuth Button */}
+              <button
+                type="button"
+                disabled={loading || demoLoading}
+                onClick={() => {
+                  setOauthProvider('google');
+                  setShowOAuthModal(true);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-slate-700/80 hover:border-purple-500/50 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
+              >
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z" />
+                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.97 0 12s.45 3.82 1.25 5.42l4.03-3.15z" />
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                </svg>
+                <span>Google</span>
+              </button>
+
+              {/* Microsoft OAuth Button */}
+              <button
+                type="button"
+                disabled={loading || demoLoading}
+                onClick={() => {
+                  setOauthProvider('microsoft');
+                  setShowOAuthModal(true);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-slate-700/80 hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.15)] text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
+              >
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 21 21">
+                  <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+                  <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+                  <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+                  <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+                </svg>
+                <span>Microsoft</span>
+              </button>
+            </div>
 
             {/* Instant 1-Click Demo Login with Continuous Soft Glow Pulse */}
             <button
               type="button"
-              disabled={loading || demoLoading || googleLoading}
+              disabled={loading || demoLoading}
               onClick={() => handleQuickDemoLogin(role)}
               className="w-full py-2.5 px-4 rounded-xl bg-purple-950/30 hover:bg-purple-900/40 border border-purple-500/40 hover:border-purple-500/70 text-purple-300 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-95 animate-demo-pulse shadow-md"
             >
@@ -1063,84 +1040,24 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
       </div>
 
       {/* Forgot / Reset Password Modal */}
-      {showForgotPassword && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-scale">
-          <div className="glass-login-card max-w-sm w-full rounded-3xl p-6 space-y-4 border border-white/20 shadow-2xl relative">
-            <button
-              type="button"
-              onClick={() => setShowForgotPassword(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        initialEmail={forgotEmail || email}
+        onSuccessRedirect={handlePasswordResetSuccess}
+      />
 
-            <div className="text-center space-y-1.5">
-              <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center mx-auto text-purple-400">
-                <Lock className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-heading font-black text-white">
-                Set / Reset Password
-              </h3>
-              <p className="text-xs text-slate-400">
-                Enter your account email and new password to immediately update your credentials and sign in.
-              </p>
-            </div>
-
-            {resetError && (
-              <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{resetError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleForgotPasswordSubmit} className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="name@gmail.com"
-                  value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
-                  className="input-ai-focus w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Enter new password (min 4 chars)"
-                  value={newPasswordInput}
-                  onChange={(e) => setNewPasswordInput(e.target.value)}
-                  className="input-ai-focus w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={resetLoading}
-                className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-600/30 transition-all cursor-pointer disabled:opacity-50"
-              >
-                {resetLoading ? 'Updating Password...' : 'Reset Password & Sign In'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Google Sign-In Account Selector Modal */}
-      <GoogleSignInModal
-        isOpen={showGoogleModal}
-        onClose={() => setShowGoogleModal(false)}
-        onGoogleSuccess={handleGoogleAuthSuccess}
+      {/* OAuth Account Picker Modal (Google & Microsoft) */}
+      <OAuthAccountPickerModal
+        isOpen={showOAuthModal}
+        onClose={() => setShowOAuthModal(false)}
+        onOAuthSuccess={(user) => {
+          if (onAuthSuccess) {
+            onAuthSuccess(user);
+          }
+        }}
         currentRole={role}
-        onSwitchRole={(newRole) => setRole(newRole)}
+        defaultProvider={oauthProvider}
       />
     </div>
   );
