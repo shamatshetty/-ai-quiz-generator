@@ -1,36 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
-  UserPlus,
-  Check,
-  Sparkles,
   Shield,
   ArrowRight,
-  User,
-  Mail,
   AlertCircle,
   Laptop,
-  CheckCircle2
+  CheckCircle2,
+  ExternalLink,
+  KeyRound,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-
-// Official Google Letter Avatar Color Palette
-const GOOGLE_COLORS = [
-  'bg-[#4285F4]', // Google Blue
-  'bg-[#EA4335]', // Google Red
-  'bg-[#FBBC05] text-slate-950', // Google Yellow
-  'bg-[#34A853]', // Google Green
-  'bg-purple-600',
-  'bg-indigo-600'
-];
-
-const getGoogleColor = (str = '') => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return GOOGLE_COLORS[Math.abs(hash) % GOOGLE_COLORS.length];
-};
 
 export default function OAuthAccountPickerModal({
   isOpen,
@@ -38,259 +18,186 @@ export default function OAuthAccountPickerModal({
   onOAuthSuccess,
   currentRole = 'STUDENT'
 }) {
-  const { googleLogin, getGoogleDeviceAccounts } = useAuth();
+  const { googleLogin } = useAuth();
 
-  const [selectedRole, setSelectedRole] = useState(currentRole);
-  const [deviceAccounts, setDeviceAccounts] = useState([]);
-  const [isAddingAnother, setIsAddingAnother] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
-  const [newName, setNewName] = useState('');
+  // Retrieve Client ID from env or saved configuration
+  const [clientId, setClientId] = useState(() => {
+    return import.meta.env.VITE_GOOGLE_CLIENT_ID || localStorage.getItem('quiz_google_client_id') || '';
+  });
+  const [inputClientId, setInputClientId] = useState('');
+  const [showConfig, setShowConfig] = useState(false);
+
   const [loading, setLoading] = useState(false);
-  const [loadingEmail, setLoadingEmail] = useState(null);
   const [error, setError] = useState('');
+  const [gisLoaded, setGisLoaded] = useState(false);
 
-  useEffect(() => {
-    setSelectedRole(currentRole);
-  }, [currentRole]);
+  const buttonContainerRef = useRef(null);
 
-  // Discover and aggregate Google accounts present on this device / browser
+  // Check if Google Identity Services script is loaded
   useEffect(() => {
     if (!isOpen) return;
 
-    let isMounted = true;
     setError('');
-    setIsAddingAnother(false);
-    setNewEmail('');
-    setNewName('');
-
-    const loadAccounts = async () => {
-      const accountMap = new Map();
-
-      // 1. Check local storage for previously used Google accounts on this device
-      try {
-        const stored = localStorage.getItem('quiz_google_device_accounts');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            parsed.forEach((acc) => {
-              if (acc.email) {
-                accountMap.set(acc.email.toLowerCase(), {
-                  ...acc,
-                  email: acc.email.toLowerCase(),
-                  source: 'device'
-                });
-              }
-            });
-          }
-        }
-      } catch (e) {
-        console.warn('Error reading device Google accounts:', e);
-      }
-
-      // 2. Check remembered credentials from localStorage
-      try {
-        const savedCreds = localStorage.getItem('quiz_remember_me');
-        if (savedCreds) {
-          const parsed = JSON.parse(savedCreds);
-          if (parsed.email && parsed.email.includes('@')) {
-            const normalized = parsed.email.toLowerCase();
-            if (!accountMap.has(normalized)) {
-              accountMap.set(normalized, {
-                name: parsed.email.split('@')[0],
-                email: normalized,
-                avatar: parsed.role === 'TEACHER' ? '👨‍🏫' : '🚀',
-                role: parsed.role || selectedRole,
-                source: 'device'
-              });
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Error reading saved credentials:', e);
-      }
-
-      // 3. Fetch known Google/Gmail accounts registered on this system
-      try {
-        if (typeof getGoogleDeviceAccounts === 'function') {
-          const serverAccounts = await getGoogleDeviceAccounts();
-          if (Array.isArray(serverAccounts)) {
-            serverAccounts.forEach((acc) => {
-              if (acc.email) {
-                const normalized = acc.email.toLowerCase();
-                if (!accountMap.has(normalized)) {
-                  accountMap.set(normalized, {
-                    name: acc.name || normalized.split('@')[0],
-                    email: normalized,
-                    avatar: acc.avatar || (acc.role === 'TEACHER' ? '👨‍🏫' : '🚀'),
-                    role: acc.role || selectedRole,
-                    source: 'device'
-                  });
-                }
-              }
-            });
-          }
-        }
-      } catch (e) {
-        console.warn('Error fetching server Google accounts:', e);
-      }
-
-      // Fallback: If no account detected at all, supply initial profile
-      if (accountMap.size === 0) {
-        accountMap.set('alex.rivera@gmail.com', {
-          name: 'Alex Rivera',
-          email: 'alex.rivera@gmail.com',
-          avatar: '🚀',
-          role: 'STUDENT',
-          source: 'device'
-        });
-      }
-
-      if (isMounted) {
-        const accountsList = Array.from(accountMap.values());
-        setDeviceAccounts(accountsList);
+    const checkGis = () => {
+      if (window.google?.accounts?.id) {
+        setGisLoaded(true);
       }
     };
 
-    loadAccounts();
+    checkGis();
+    const interval = setInterval(checkGis, 300);
+    return () => clearInterval(interval);
+  }, [isOpen]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen, selectedRole]);
-
-  // Google Identity Services (GIS) button and prompt initialization
+  // Initialize official Google Identity Services (GIS) when Client ID and SDK are available
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !clientId || !window.google?.accounts?.id) return;
 
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (window.google?.accounts?.id && clientId) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: (response) => {
-            if (response.credential) {
-              handleGoogleCredential(response.credential);
-            }
-          },
-          auto_select: false
-        });
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId.trim(),
+        callback: handleGoogleCredentialResponse,
+        auto_select: false,
+        context: 'signin'
+      });
 
-        const btnContainer = document.getElementById('gsi-official-native-btn');
-        if (btnContainer) {
+      // Render official Google Sign-In Button
+      const timer = setTimeout(() => {
+        const btnContainer = document.getElementById('gsi-official-real-button');
+        if (btnContainer && window.google?.accounts?.id) {
+          btnContainer.innerHTML = '';
           window.google.accounts.id.renderButton(btnContainer, {
+            type: 'standard',
             theme: 'filled_blue',
             size: 'large',
-            width: 320,
             text: 'continue_with',
-            shape: 'pill'
+            shape: 'pill',
+            width: 280,
+            logo_alignment: 'left'
           });
         }
+      }, 100);
 
-        // Prompt Google One Tap natively if available
-        window.google.accounts.id.prompt();
-      } catch (err) {
-        console.warn('GIS notice:', err.message);
-      }
+      // Prompt Google One Tap natively (pops up real accounts on the device)
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          console.log('[GIS] Google One Tap dismissed or not displayed:', notification.getNotDisplayedReason());
+        }
+      });
+
+      return () => clearTimeout(timer);
+    } catch (err) {
+      console.warn('GIS initialization error:', err);
     }
-  }, [isOpen]);
+  }, [isOpen, clientId, gisLoaded]);
 
   if (!isOpen) return null;
 
-  // Handle Google Token Credential from GIS
-  const handleGoogleCredential = (credential) => {
-    try {
-      const base64Url = credential.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      );
-      const googlePayload = JSON.parse(jsonPayload);
-
-      executeGoogleLogin({
-        email: googlePayload.email,
-        name: googlePayload.name || googlePayload.email.split('@')[0],
-        avatar: googlePayload.picture,
-        googleId: googlePayload.sub,
-        token: credential
-      });
-    } catch (err) {
-      console.error('Failed to parse Google credential token:', err);
+  // Handle genuine Google ID Token from Google Identity Services
+  const handleGoogleCredentialResponse = async (response) => {
+    if (!response.credential) {
+      setError('Google authentication was cancelled or did not return a valid credential.');
+      return;
     }
-  };
 
-  // Perform Google Sign-In or Sign-Up through the selected account
-  const executeGoogleLogin = async ({ email, name, avatar, googleId, token }) => {
-    setError('');
     setLoading(true);
-    setLoadingEmail(email);
+    setError('');
 
     try {
+      // Send genuine Google ID Token to backend for cryptographic verification
       const loggedUser = await googleLogin({
-        email: email.trim().toLowerCase(),
-        name: name || email.split('@')[0],
-        avatar: avatar || (selectedRole === 'TEACHER' ? '👨‍🏫' : '🚀'),
-        role: selectedRole,
-        googleId: googleId || `g_${Date.now()}`,
-        token
+        credential: response.credential,
+        role: currentRole
       });
-
-      // Save to device Google accounts list for instant 1-click logins
-      const newEntry = {
-        name: loggedUser.name || name || email.split('@')[0],
-        email: email.trim().toLowerCase(),
-        avatar: loggedUser.avatar || avatar || '🌟',
-        role: loggedUser.role || selectedRole,
-        lastUsed: Date.now()
-      };
-
-      const updated = [
-        newEntry,
-        ...deviceAccounts.filter((acc) => acc.email.toLowerCase() !== email.toLowerCase())
-      ];
-      localStorage.setItem('quiz_google_device_accounts', JSON.stringify(updated));
 
       if (typeof onOAuthSuccess === 'function') {
         onOAuthSuccess(loggedUser);
       }
       onClose();
     } catch (err) {
-      setError(err.message || 'Google sign-in failed. Please try again.');
+      setError(err.message || 'Real Google authentication failed. Please try again.');
     } finally {
       setLoading(false);
-      setLoadingEmail(null);
     }
   };
 
-  // Handle "Use another account" submission
-  const handleAddNewAccountSubmit = (e) => {
+  // Launch Google's official OAuth 2.0 Account Picker Popup Window
+  const handleLaunchGooglePopup = () => {
+    if (!clientId.trim()) {
+      setShowConfig(true);
+      return;
+    }
+
+    if (!window.google?.accounts?.oauth2) {
+      setError('Google Identity Services SDK is still loading. Please wait a moment and try again.');
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+
+    try {
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId.trim(),
+        scope: 'email profile openid',
+        prompt: 'select_account', // Forces Google to display all accounts present on the device
+        callback: async (tokenResponse) => {
+          if (tokenResponse.error) {
+            setLoading(false);
+            if (tokenResponse.error !== 'popup_closed_by_user') {
+              setError(`Google Sign-In failed: ${tokenResponse.error_description || tokenResponse.error}`);
+            }
+            return;
+          }
+
+          if (tokenResponse.access_token) {
+            try {
+              // Verify and fetch real Google user profile
+              const loggedUser = await googleLogin({
+                token: tokenResponse.access_token,
+                role: currentRole
+              });
+
+              if (typeof onOAuthSuccess === 'function') {
+                onOAuthSuccess(loggedUser);
+              }
+              onClose();
+            } catch (err) {
+              setError(err.message || 'Failed to authenticate Google account with server.');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      });
+
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
+    } catch (err) {
+      setLoading(false);
+      setError('Failed to open Google account picker: ' + err.message);
+    }
+  };
+
+  // Save entered Google Client ID
+  const handleSaveClientId = (e) => {
     e.preventDefault();
-    const cleanEmail = newEmail.trim().toLowerCase();
-    if (!cleanEmail) {
-      setError('Please enter your Google / Gmail address');
+    const cleanId = inputClientId.trim();
+    if (!cleanId || !cleanId.includes('.apps.googleusercontent.com')) {
+      setError('Please enter a valid Google OAuth Client ID ending with .apps.googleusercontent.com');
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    executeGoogleLogin({
-      email: cleanEmail,
-      name: newName.trim() || cleanEmail.split('@')[0],
-      avatar: selectedRole === 'TEACHER' ? '👨‍🏫' : '🚀'
-    });
+    setClientId(cleanId);
+    localStorage.setItem('quiz_google_client_id', cleanId);
+    setShowConfig(false);
+    setError('');
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-tab-enter">
       <div className="relative w-full max-w-md bg-slate-900/95 border border-slate-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-blue-950/40 text-white overflow-hidden">
         
-        {/* Soft Google Blue & Purple Ambient Glow */}
+        {/* Ambient Glow */}
         <div className="absolute -top-24 -right-24 w-52 h-52 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-52 h-52 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
 
@@ -303,9 +210,9 @@ export default function OAuthAccountPickerModal({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Google Header */}
+        {/* Header */}
         <div className="text-center space-y-3 mb-6">
-          {/* Official Google "G" Logo Pill */}
+          {/* Official Google "G" Logo */}
           <div className="w-12 h-12 mx-auto rounded-2xl bg-white shadow-lg flex items-center justify-center p-2.5">
             <svg className="w-full h-full" viewBox="0 0 24 24">
               <path
@@ -329,11 +236,11 @@ export default function OAuthAccountPickerModal({
 
           <div>
             <h2 className="text-xl font-heading font-black text-white tracking-tight">
-              Choose an account
+              Sign in with Google
             </h2>
             <p className="text-xs text-slate-400 mt-1">
-              to continue to <strong className="text-purple-300">QuizPop Classroom</strong> as{' '}
-              <span className="text-emerald-400 font-bold uppercase">{selectedRole}</span>
+              Select your real Google account on this device to continue as{' '}
+              <span className="text-emerald-400 font-bold uppercase">{currentRole}</span>
             </p>
           </div>
         </div>
@@ -342,183 +249,134 @@ export default function OAuthAccountPickerModal({
         {error && (
           <div className="mb-4 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2.5 animate-scale-in">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-            <p className="font-semibold">{error}</p>
+            <p className="font-semibold leading-relaxed">{error}</p>
           </div>
         )}
 
-        {/* Native GSI button container if active */}
-        <div id="gsi-official-native-btn" className="empty:hidden mb-4 flex justify-center" />
-
-        {/* Google Accounts Present on Device */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Laptop className="w-3.5 h-3.5 text-blue-400" />
-              <span>Google Accounts on this Device</span>
-            </span>
-            <span className="text-[10px] font-semibold text-slate-500">
-              {deviceAccounts.length} found
-            </span>
-          </div>
-
-          {/* List of Accounts */}
-          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-            {deviceAccounts.map((account, index) => {
-              const isItemLoading = loading && loadingEmail === account.email;
-              const firstLetter = (account.name || account.email || 'G').charAt(0).toUpperCase();
-              const colorBg = getGoogleColor(account.email);
-
-              return (
-                <button
-                  key={`${account.email}-${index}`}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => executeGoogleLogin({
-                    email: account.email,
-                    name: account.name,
-                    avatar: account.avatar
-                  })}
-                  className="w-full flex items-center justify-between p-3 rounded-2xl bg-slate-950/70 border border-slate-800/90 hover:border-blue-500/60 hover:bg-slate-800/90 transition-all duration-200 cursor-pointer group text-left shadow-sm hover:shadow-md hover:shadow-blue-500/10 disabled:opacity-50"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    {/* Account Avatar or Google Colored Initial */}
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white shadow-inner shrink-0 group-hover:scale-105 transition-transform ${colorBg}`}
-                    >
-                      {account.avatar && !account.avatar.startsWith('http') ? (
-                        <span className="text-xl">{account.avatar}</span>
-                      ) : account.avatar && account.avatar.startsWith('http') ? (
-                        <img
-                          src={account.avatar}
-                          alt={account.name}
-                          className="w-full h-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <span>{firstLetter}</span>
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-white truncate group-hover:text-blue-300 transition-colors">
-                        {account.name || account.email.split('@')[0]}
-                      </p>
-                      <p className="text-xs text-slate-400 truncate font-mono">
-                        {account.email}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="shrink-0 pl-2 flex items-center gap-2">
-                    {isItemLoading ? (
-                      <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                        <Check className="w-3 h-3 text-blue-400" />
-                        <span>Sign In</span>
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* "Use another account" Accordion / Toggle */}
-          {!isAddingAnother ? (
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => setIsAddingAnother(true)}
-              className="w-full flex items-center gap-3 p-3 rounded-2xl border border-dashed border-slate-700/90 hover:border-blue-500/60 hover:bg-blue-950/20 text-slate-300 hover:text-white transition-all text-xs font-bold cursor-pointer justify-center"
-            >
-              <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-blue-400">
-                <UserPlus className="w-3.5 h-3.5" />
+        {/* MAIN BODY: When Client ID is configured, show official Google Account Chooser */}
+        {clientId && !showConfig ? (
+          <div className="space-y-4">
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-center space-y-3">
+              <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-300">
+                <Laptop className="w-4 h-4 text-blue-400" />
+                <span>Device Google Accounts</span>
               </div>
-              <span>Use another Google account</span>
-            </button>
-          ) : (
-            /* Inline Form to Add Another Google Account */
-            <form onSubmit={handleAddNewAccountSubmit} className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3 animate-scale-in">
-              <div className="flex items-center justify-between pb-1">
-                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <UserPlus className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Enter Google Account</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsAddingAnother(false)}
-                  className="text-[11px] text-slate-400 hover:text-white font-semibold"
-                >
-                  Cancel
-                </button>
+              <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                Google will prompt the official account chooser showing the Google accounts present in your browser.
+              </p>
+
+              {/* Official Google Identity Services Rendered Button */}
+              <div className="flex justify-center pt-2">
+                <div id="gsi-official-real-button" className="min-h-[44px] flex justify-center" />
               </div>
 
+              {/* Secondary Direct Trigger Popup Button */}
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleLaunchGooglePopup}
+                className="w-full py-2.5 px-4 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 hover:border-blue-500 text-blue-300 hover:text-white text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Verifying with Google...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Choose Google Account (Popup)</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Change Client ID link */}
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setInputClientId(clientId);
+                  setShowConfig(true);
+                }}
+                className="text-[11px] text-slate-500 hover:text-slate-400 underline cursor-pointer"
+              >
+                Configure Google Client ID
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* CONFIGURATION VIEW: When Google Client ID is needed */
+          <div className="space-y-4">
+            <div className="p-4 rounded-2xl bg-blue-950/20 border border-blue-500/30 text-xs text-slate-300 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-blue-300">
+                <Shield className="w-4 h-4 text-blue-400" />
+                <span>Real Google OAuth Setup</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                To connect directly to Google's servers and display your device's real Google accounts, your Google Cloud OAuth Client ID is required.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveClientId} className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Google / Gmail Address
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Google OAuth 2.0 Client ID
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                  <input
-                    type="email"
-                    required
-                    autoFocus
-                    value={newEmail}
-                    onChange={(e) => {
-                      setNewEmail(e.target.value);
-                      setError('');
-                    }}
-                    placeholder="yourname@gmail.com"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-blue-500 font-medium"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Full Name (Optional)
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input
                     type="text"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="e.g. Alex Rivera"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-blue-500 font-medium"
+                    required
+                    placeholder="xxxxxxxxxxxx.apps.googleusercontent.com"
+                    value={inputClientId}
+                    onChange={(e) => {
+                      setInputClientId(e.target.value);
+                      setError('');
+                    }}
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-blue-500 font-mono"
                   />
                 </div>
               </div>
 
-              <div className="pt-1">
+              <div className="flex items-center gap-2">
+                {clientId && (
+                  <button
+                    type="button"
+                    onClick={() => setShowConfig(false)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )}
                 <button
                   type="submit"
-                  disabled={loading || !newEmail.trim()}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                  disabled={!inputClientId.trim()}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer disabled:opacity-50"
                 >
-                  {loading ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Signing in with Google...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Continue with Google</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </>
-                  )}
+                  Save & Open Real Google Sign-In
                 </button>
               </div>
             </form>
-          )}
-        </div>
 
-        {/* Google Official Disclaimer Footer */}
+            <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+              <p className="font-bold text-slate-300">How to get a Google Client ID (Free, 2 mins):</p>
+              <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-400">
+                <li>Visit <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-0.5">Google Cloud Console <ExternalLink className="w-3 h-3" /></a></li>
+                <li>Create an <strong>OAuth Client ID</strong> (Application type: <em>Web application</em>)</li>
+                <li>Add <code className="text-slate-300 bg-slate-800 px-1 py-0.5 rounded">http://localhost:5173</code> to <strong>Authorized JavaScript origins</strong></li>
+                <li>Copy the Client ID and paste it above.</li>
+              </ol>
+            </div>
+          </div>
+        )}
+
+        {/* Google Security & Privacy Disclaimer */}
         <div className="mt-6 pt-4 border-t border-slate-800/80 text-center">
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            To continue, Google will share your name, email address, and profile picture with{' '}
-            <strong className="text-slate-300">QuizPop Classroom</strong>.
-          </p>
+          <div className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
+            <Shield className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Verified securely by official Google Identity Services</span>
+          </div>
         </div>
 
       </div>

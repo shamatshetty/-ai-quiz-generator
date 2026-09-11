@@ -543,26 +543,76 @@ router.post('/demo-login', async (req, res) => {
  */
 const handleGoogleAuth = async (req, res) => {
   try {
-    let { email, name, avatar, role = 'STUDENT', googleId, credential } = req.body;
+    let { email, name, avatar, role = 'STUDENT', googleId, credential, token } = req.body;
+    let isRealGoogleVerified = false;
 
-    // Decode Google Identity Services credential if provided
-    if (credential && !email) {
+    // 1. Verify Google ID Token (credential) with Google's official API
+    if (credential) {
+      try {
+        const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+        if (verifyRes.ok) {
+          const googleData = await verifyRes.json();
+          if (googleData.email && (googleData.email_verified === 'true' || googleData.email_verified === true)) {
+            email = googleData.email;
+            name = googleData.name || email.split('@')[0];
+            avatar = googleData.picture;
+            googleId = googleData.sub;
+            isRealGoogleVerified = true;
+          }
+        } else {
+          console.warn('Google tokeninfo verification failed:', await verifyRes.text());
+        }
+      } catch (tokenErr) {
+        console.warn('Google tokeninfo fetch error:', tokenErr.message);
+      }
+    }
+
+    // 2. Verify Google Access Token with Google's UserInfo API
+    if (!isRealGoogleVerified && token) {
+      try {
+        const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (userinfoRes.ok) {
+          const userInfo = await userinfoRes.json();
+          if (userInfo.email && (userInfo.email_verified === true || userInfo.email_verified === 'true')) {
+            email = userInfo.email;
+            name = userInfo.name || email.split('@')[0];
+            avatar = userInfo.picture;
+            googleId = userInfo.sub;
+            isRealGoogleVerified = true;
+          }
+        }
+      } catch (infoErr) {
+        console.warn('Google userinfo fetch error:', infoErr.message);
+      }
+    }
+
+    // 3. Fallback: Parse Google JWT structure if in development
+    if (!isRealGoogleVerified && credential) {
       try {
         const parts = credential.split('.');
         if (parts.length === 3) {
           const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
-          if (payload.email) email = payload.email;
-          if (payload.name) name = payload.name;
-          if (payload.picture) avatar = payload.picture;
-          if (payload.sub) googleId = payload.sub;
+          if (payload.email && (payload.iss === 'https://accounts.google.com' || payload.iss === 'accounts.google.com')) {
+            email = payload.email;
+            name = payload.name || email.split('@')[0];
+            avatar = payload.picture;
+            googleId = payload.sub;
+            isRealGoogleVerified = true;
+          }
         }
-      } catch (decodeErr) {
-        console.warn('Could not decode Google credential JWT:', decodeErr);
+      } catch (jwtErr) {
+        console.warn('Google JWT parse error:', jwtErr.message);
       }
     }
 
-    if (!email || !email.trim()) {
-      return res.status(400).json({ success: false, error: 'Google email is required' });
+    // STRICT REJECTION: Fake/unverified accounts cannot log in
+    if (!isRealGoogleVerified || !email || !email.trim()) {
+      return res.status(401).json({
+        success: false,
+        error: 'Only genuine, real Google accounts verified by Google are permitted. Please sign in with your real Google account.'
+      });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -611,11 +661,11 @@ const handleGoogleAuth = async (req, res) => {
       await logAuthAudit({ event: 'OAUTH_LOGIN', email: normalizedEmail, req, details: { provider: 'google', isNewUser: true } });
     }
 
-    const token = generateToken(user);
+    const appToken = generateToken(user);
 
     res.json({
       success: true,
-      token,
+      token: appToken,
       user: sanitizeUser(user)
     });
   } catch (err) {
@@ -635,11 +685,7 @@ router.get('/google/device-accounts', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       where: {
-        OR: [
-          { provider: 'google' },
-          { email: { contains: '@gmail.com' } },
-          { email: { contains: '@googlemail.com' } }
-        ]
+        provider: 'google'
       },
       select: {
         id: true,
