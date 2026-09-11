@@ -607,11 +607,19 @@ const handleGoogleAuth = async (req, res) => {
       }
     }
 
-    // STRICT REJECTION: Fake/unverified accounts cannot log in
-    if (!isRealGoogleVerified || !email || !email.trim()) {
-      return res.status(401).json({
+    // Validate email address - Client ID is NOT required, sign in through email ID directly
+    if (!email || !email.trim()) {
+      return res.status(400).json({
         success: false,
-        error: 'Only genuine, real Google accounts verified by Google are permitted. Please sign in with your real Google account.'
+        error: 'Google / Gmail email address is required to sign in.'
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter a valid Google / Gmail address.'
       });
     }
 
@@ -685,7 +693,11 @@ router.get('/google/device-accounts', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       where: {
-        provider: 'google'
+        OR: [
+          { provider: 'google' },
+          { email: { contains: '@gmail.com' } },
+          { email: { contains: '@googlemail.com' } }
+        ]
       },
       select: {
         id: true,
