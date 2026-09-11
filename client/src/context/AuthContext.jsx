@@ -148,6 +148,24 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const resetPassword = async ({ email, newPassword }) => {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, newPassword })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Password reset failed');
+      }
+      saveAuthData(data.token, data.user);
+      return data.user;
+    } catch (err) {
+      throw err;
+    }
+  };
+
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
@@ -174,6 +192,7 @@ export function AuthProvider({ children }) {
         register,
         demoLogin,
         googleLogin,
+        resetPassword,
         logout,
         updateUser
       }}

@@ -52,7 +52,7 @@ const getSavedCredentials = (targetRole = null) => {
 };
 
 export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack = null }) {
-  const { login, register, demoLogin, googleLogin } = useAuth();
+  const { login, register, demoLogin, googleLogin, resetPassword } = useAuth();
 
   // Load remembered credentials if any
   const savedCreds = getSavedCredentials(initialRoomCode ? 'STUDENT' : null);
@@ -112,13 +112,13 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
   // Instant sync when browser autofills credentials
   useEffect(() => {
     const syncAutofill = () => {
-      if (emailInputRef.current && emailInputRef.current.value && !email) {
+      if (emailInputRef.current && emailInputRef.current.value && emailInputRef.current.value !== email) {
         setEmail(emailInputRef.current.value);
       }
-      if (passwordInputRef.current && passwordInputRef.current.value && !password) {
+      if (passwordInputRef.current && passwordInputRef.current.value && passwordInputRef.current.value !== password) {
         setPassword(passwordInputRef.current.value);
       }
-      if (nameInputRef.current && nameInputRef.current.value && !name) {
+      if (nameInputRef.current && nameInputRef.current.value && nameInputRef.current.value !== name) {
         setName(nameInputRef.current.value);
       }
     };
@@ -141,7 +141,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
       clearTimeout(t3);
       window.removeEventListener('animationstart', handleAutoFillAnimation);
     };
-  }, []);
+  }, [email, password, name]);
 
   // Loading & Error States
   const [loading, setLoading] = useState(false);
@@ -151,13 +151,15 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
   const [error, setError] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
   const isTeacher = role === 'TEACHER';
 
   // Validation helpers
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const isPasswordValid = password.length >= 6;
+  const isPasswordValid = password.length >= 4;
   const isNameValid = name.trim().length >= 2;
 
   const triggerCardShake = () => {
@@ -173,12 +175,17 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
     e.preventDefault();
     setError('');
 
+    // Capture exact current DOM input values or fallback to React state
+    const currentEmail = (emailInputRef.current?.value || email || '').trim();
+    const currentPassword = passwordInputRef.current?.value || password || '';
+    const currentName = (nameInputRef.current?.value || name || '').trim();
+
     // Mark all as touched on submit
     setEmailTouched(true);
     setPasswordTouched(true);
     if (mode === 'register') setNameTouched(true);
 
-    if (!isEmailValid || !isPasswordValid || (mode === 'register' && !isNameValid)) {
+    if (!currentEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentEmail) || currentPassword.length < 4 || (mode === 'register' && currentName.length < 2)) {
       setError('Please fix the highlighted fields with valid information.');
       triggerCardShake();
       return;
@@ -188,32 +195,35 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
     try {
       let loggedUser;
       if (mode === 'login') {
-        loggedUser = await login({ email: email.trim(), password, role });
-        if (rememberMe) {
-          try {
-            const creds = { email: email.trim(), password, role, savedAt: Date.now() };
-            localStorage.setItem('quiz_remember_me', JSON.stringify(creds));
-            localStorage.setItem(`quiz_remember_${role}`, JSON.stringify(creds));
-          } catch (storageErr) {
-            console.warn('Failed to save credentials to localStorage:', storageErr);
-          }
-        } else {
-          try {
-            localStorage.removeItem('quiz_remember_me');
-            localStorage.removeItem(`quiz_remember_${role}`);
-          } catch (storageErr) {
-            console.warn('Failed to remove credentials from localStorage:', storageErr);
-          }
-        }
+        loggedUser = await login({ email: currentEmail, password: currentPassword, role });
       } else {
         loggedUser = await register({
-          name: name.trim(),
-          email: email.trim(),
-          password,
+          name: currentName,
+          email: currentEmail,
+          password: currentPassword,
           role,
           avatar: !isTeacher ? avatar : '👨‍🏫',
           subject: isTeacher ? subject.trim() : null
         });
+      }
+
+      // Automatically remember credentials on BOTH successful login AND registration
+      if (rememberMe) {
+        try {
+          const userRole = loggedUser?.role || role;
+          const creds = { email: currentEmail, password: currentPassword, role: userRole, savedAt: Date.now() };
+          localStorage.setItem('quiz_remember_me', JSON.stringify(creds));
+          localStorage.setItem(`quiz_remember_${userRole}`, JSON.stringify(creds));
+        } catch (storageErr) {
+          console.warn('Failed to save credentials to localStorage:', storageErr);
+        }
+      } else {
+        try {
+          localStorage.removeItem('quiz_remember_me');
+          localStorage.removeItem(`quiz_remember_${role}`);
+        } catch (storageErr) {
+          console.warn('Failed to remove credentials from localStorage:', storageErr);
+        }
       }
 
       if (onAuthSuccess) {
@@ -271,10 +281,45 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
     }
   };
 
-  const handleForgotPasswordSubmit = (e) => {
+  const handleForgotPasswordSubmit = async (e) => {
     e.preventDefault();
-    if (!forgotEmail.trim()) return;
-    setForgotSuccess(true);
+    setResetError('');
+    const targetEmail = (forgotEmail || emailInputRef.current?.value || email || '').trim();
+    if (!targetEmail) {
+      setResetError('Please enter your email address');
+      return;
+    }
+    if (!newPasswordInput || newPasswordInput.length < 4) {
+      setResetError('New password must be at least 4 characters');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const loggedUser = await resetPassword({
+        email: targetEmail,
+        newPassword: newPasswordInput
+      });
+
+      setEmail(targetEmail);
+      setPassword(newPasswordInput);
+
+      try {
+        const userRole = loggedUser?.role || role;
+        const creds = { email: targetEmail, password: newPasswordInput, role: userRole, savedAt: Date.now() };
+        localStorage.setItem('quiz_remember_me', JSON.stringify(creds));
+        localStorage.setItem(`quiz_remember_${userRole}`, JSON.stringify(creds));
+      } catch {}
+
+      setShowForgotPassword(false);
+      if (onAuthSuccess) {
+        onAuthSuccess(loggedUser);
+      }
+    } catch (err) {
+      setResetError(err.message || 'Failed to reset password. Please try again.');
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   return (
@@ -727,9 +772,10 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                 <button
                   type="button"
                   onClick={() => {
-                    setForgotEmail(email);
+                    setForgotEmail(emailInputRef.current?.value || email);
+                    setNewPasswordInput('');
+                    setResetError('');
                     setShowForgotPassword(true);
-                    setForgotSuccess(false);
                   }}
                   className="text-purple-400 hover:text-purple-300 font-semibold transition-colors cursor-pointer"
                 >
@@ -740,9 +786,35 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
 
             {/* Error Message */}
             {error && (
-              <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-2 animate-fade-scale">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{error}</span>
+              <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold flex flex-col gap-1.5 animate-fade-scale">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{error}</span>
+                </div>
+                {mode === 'login' && (
+                  <div className="pl-6 flex items-center gap-3 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotEmail(emailInputRef.current?.value || email);
+                        setNewPasswordInput('');
+                        setResetError('');
+                        setShowForgotPassword(true);
+                      }}
+                      className="text-purple-300 hover:text-white underline font-bold cursor-pointer"
+                    >
+                      Reset / Set Password
+                    </button>
+                    <span className="text-slate-500">•</span>
+                    <button
+                      type="button"
+                      onClick={handleGoogleSignIn}
+                      className="text-cyan-300 hover:text-white underline font-bold cursor-pointer"
+                    >
+                      Sign in with Google
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -836,6 +908,8 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                   onClick={() => {
                     setMode('register');
                     setError('');
+                    setPassword('');
+                    setPasswordTouched(false);
                   }}
                   className="font-bold text-purple-400 hover:text-purple-300 link-animated-underline cursor-pointer ml-1"
                 >
@@ -855,7 +929,10 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                       setEmail(roleCreds.email || '');
                       setPassword(roleCreds.password || '');
                       setRememberMe(true);
+                    } else {
+                      setPassword('');
                     }
+                    setPasswordTouched(false);
                   }}
                   className="font-bold text-purple-400 hover:text-purple-300 link-animated-underline cursor-pointer ml-1"
                 >
@@ -869,7 +946,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
         </div>
       </div>
 
-      {/* Forgot Password Modal */}
+      {/* Forgot / Reset Password Modal */}
       {showForgotPassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-scale">
           <div className="glass-login-card max-w-sm w-full rounded-3xl p-6 space-y-4 border border-white/20 shadow-2xl relative">
@@ -886,51 +963,57 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                 <Lock className="w-5 h-5" />
               </div>
               <h3 className="text-lg font-heading font-black text-white">
-                Reset Your Password
+                Set / Reset Password
               </h3>
               <p className="text-xs text-slate-400">
-                Enter your institutional or student email to receive recovery instructions.
+                Enter your account email and new password to immediately update your credentials and sign in.
               </p>
             </div>
 
-            {forgotSuccess ? (
-              <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-center space-y-2">
-                <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto" />
-                <p className="text-xs font-bold text-emerald-300">
-                  Password reset link sent to <span className="text-white underline">{forgotEmail}</span>!
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(false)}
-                  className="mt-2 w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-black rounded-xl"
-                >
-                  Return to Sign In
-                </button>
+            {resetError && (
+              <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{resetError}</span>
               </div>
-            ) : (
-              <form onSubmit={handleForgotPasswordSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="name@school.edu"
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    className="input-ai-focus w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-600/30 transition-all cursor-pointer"
-                >
-                  Send Recovery Link
-                </button>
-              </form>
             )}
+
+            <form onSubmit={handleForgotPasswordSubmit} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@gmail.com"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="input-ai-focus w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter new password (min 4 chars)"
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  className="input-ai-focus w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-600/30 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {resetLoading ? 'Updating Password...' : 'Reset Password & Sign In'}
+              </button>
+            </form>
           </div>
         </div>
       )}

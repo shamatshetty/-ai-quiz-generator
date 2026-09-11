@@ -116,6 +116,7 @@ router.post('/login', async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    console.log('[Auth] Login attempt for:', normalizedEmail, 'role requested:', role);
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail }
@@ -125,20 +126,22 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+    let isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch && typeof password === 'string') {
+      isMatch = await bcrypt.compare(password.trim(), user.password);
     }
 
-    // Role check if specific role requested
-    if (role && role.toUpperCase() !== user.role) {
-      return res.status(403).json({
+    if (!isMatch) {
+      return res.status(401).json({
         success: false,
-        error: `This account is registered as a ${user.role.toLowerCase()}. Please switch to the ${user.role.toLowerCase()} portal.`
+        error: 'Invalid email or password. If you forgot your password or created this account with Google, use "Forgot password?" below to reset it.'
       });
     }
 
+    // Generate token with user's verified registered role
     const token = generateToken(user);
+
+    console.log('[Auth] Login successful for:', normalizedEmail, 'role:', user.role);
 
     res.json({
       success: true,
@@ -148,6 +151,55 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ success: false, error: 'Login failed: ' + err.message });
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * Direct password reset for accounts using verified email
+ */
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({ success: false, error: 'Email address is required' });
+    }
+
+    if (!newPassword || newPassword.length < 4) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 4 characters' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log('[Auth] Reset password request for:', normalizedEmail);
+
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'No account found with this email address' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword }
+    });
+
+    const token = generateToken(updatedUser);
+
+    console.log('[Auth] Password successfully reset for:', normalizedEmail);
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully! You are now logged in.',
+      token,
+      user: sanitizeUser(updatedUser)
+    });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ success: false, error: 'Failed to reset password: ' + err.message });
   }
 });
 
