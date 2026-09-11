@@ -239,11 +239,11 @@ export default function HostDashboard({
                 }
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-emerald-500/50 text-slate-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-105 active:scale-95 group shrink-0"
-              title={activeTab !== 'overview' ? 'Back to Overview' : 'Back to Home'}
+              title={activeTab !== 'overview' ? 'Back to Overview' : 'Back to Login Page'}
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1 text-emerald-400" />
-              <span className="hidden sm:inline">{activeTab !== 'overview' ? 'Back' : 'Home'}</span>
-              <span className="sm:hidden">Back</span>
+              <span className="hidden sm:inline">{activeTab !== 'overview' ? 'Back' : 'Login'}</span>
+              <span className="sm:hidden">{activeTab !== 'overview' ? 'Back' : 'Login'}</span>
             </button>
 
             {/* Mobile Hamburger Toggle */}

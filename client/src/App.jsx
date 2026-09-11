@@ -420,11 +420,11 @@ export default function App() {
       };
     }
 
-    // 4. Host in dashboard (can return to home portal)
+    // 4. Host in dashboard (returns directly to login)
     if (screen === 'host-dashboard') {
       return {
-        label: 'Home',
-        action: () => setScreen('home')
+        label: 'Login',
+        action: handleSignOutApp
       };
     }
 
@@ -563,7 +563,7 @@ export default function App() {
                 onRoomCreated={handleHostRoomCreated}
                 activeRoomCode={roomCode}
                 onEnterActiveRoom={() => setScreen(questionData ? 'host-live' : 'host-lobby')}
-                onBack={() => setScreen('home')}
+                onBack={handleSignOutApp}
               />
             )}
 
@@ -627,7 +627,7 @@ export default function App() {
                   setRoomCode(pin);
                   setScreen('student-join');
                 }}
-                onBack={() => setScreen('home')}
+                onBack={handleSignOutApp}
               />
             )}
 
