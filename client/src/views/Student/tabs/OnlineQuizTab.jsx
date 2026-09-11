@@ -110,7 +110,7 @@ export default function OnlineQuizTab({
 
   // Timer countdown per question
   useEffect(() => {
-    if (phase !== 'active' || !isTimed || isAnswerRevealed) return;
+    if (phase !== 'active' || !isTimed || selectedOption !== null) return;
 
     timerRef.current = setInterval(() => {
       setRemainingSeconds((prev) => {
@@ -124,7 +124,7 @@ export default function OnlineQuizTab({
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [phase, currentIndex, isTimed, isAnswerRevealed]);
+  }, [phase, currentIndex, isTimed, selectedOption]);
 
   const handleStartQuiz = async (e) => {
     if (e) e.preventDefault();
@@ -183,12 +183,11 @@ export default function OnlineQuizTab({
   };
 
   const handleOptionClick = (optIdx) => {
-    if (isAnswerRevealed) return;
+    if (selectedOption !== null) return;
 
     if (timerRef.current) clearInterval(timerRef.current);
 
     setSelectedOption(optIdx);
-    setIsAnswerRevealed(true);
 
     const isCorrect = optIdx === currentQuestion.correctOptionIndex;
     const pointsAwarded = isCorrect ? 100 + streak * 20 : 0;
@@ -214,16 +213,15 @@ export default function OnlineQuizTab({
     const updatedAnswers = [...studentAnswers, newAnswer];
     setStudentAnswers(updatedAnswers);
 
-    // Automatically advance to the next question without asking the user (1.2s delay for visual feedback)
+    // Directly advance to the next question without showing hints or asking the user (fast, snappy 300ms transition)
     if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
     autoAdvanceTimeoutRef.current = setTimeout(() => {
       advanceToNextOrFinish(updatedAnswers, updatedScore);
-    }, 1200);
+    }, 300);
   };
 
   const handleTimeExpired = () => {
-    if (isAnswerRevealed) return;
-    setIsAnswerRevealed(true);
+    if (selectedOption !== null) return;
     setSelectedOption(-1); // timeout
     soundManager.playWrong();
     setStreak(0);
@@ -238,11 +236,11 @@ export default function OnlineQuizTab({
     const updatedAnswers = [...studentAnswers, timeoutAnswer];
     setStudentAnswers(updatedAnswers);
 
-    // Automatically advance on timeout as well
+    // Directly advance to next question on timeout
     if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
     autoAdvanceTimeoutRef.current = setTimeout(() => {
       advanceToNextOrFinish(updatedAnswers, score);
-    }, 1300);
+    }, 300);
   };
 
   const handleNextQuestion = () => {
@@ -535,36 +533,26 @@ export default function OnlineQuizTab({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
             {(currentQuestion.options || []).map((opt, idx) => {
               const isSelected = selectedOption === idx;
-              const isCorrectOption = idx === currentQuestion.correctOptionIndex;
               const letter = ['A', 'B', 'C', 'D'][idx] || idx + 1;
 
-              let cardStyle = 'bg-slate-900/90 border-2 border-slate-800/90 hover:border-purple-500/60 hover:bg-slate-850 hover:shadow-lg hover:shadow-purple-500/10';
-              let badgeStyle = 'bg-slate-800/90 border-slate-700/80 text-slate-300 group-hover:border-purple-400 group-hover:text-purple-300';
+              let cardStyle = isSelected
+                ? 'bg-purple-900/40 border-2 border-purple-400 ring-4 ring-purple-500/20 shadow-xl shadow-purple-600/25 scale-[1.01]'
+                : selectedOption !== null
+                ? 'bg-slate-950/60 border-2 border-slate-800/60 text-slate-500 opacity-50 pointer-events-none'
+                : 'bg-slate-900/90 border-2 border-slate-800/90 hover:border-purple-500/60 hover:bg-slate-850 hover:shadow-lg hover:shadow-purple-500/10 cursor-pointer';
 
-              if (isAnswerRevealed) {
-                if (isCorrectOption) {
-                  cardStyle = 'bg-emerald-950/40 border-2 border-emerald-400 ring-4 ring-emerald-500/20 shadow-xl shadow-emerald-500/15 text-white';
-                  badgeStyle = 'bg-emerald-500 text-slate-950 font-black border-emerald-300 shadow-md';
-                } else if (isSelected && !isCorrectOption) {
-                  cardStyle = 'bg-rose-950/40 border-2 border-rose-500 ring-4 ring-rose-500/20 text-rose-100 shadow-xl shadow-rose-600/15';
-                  badgeStyle = 'bg-rose-600 text-white border-rose-400 shadow-md';
-                } else {
-                  cardStyle = 'bg-slate-950/60 border-2 border-slate-800/60 text-slate-500 opacity-40 grayscale-[40%] pointer-events-none';
-                  badgeStyle = 'bg-slate-900 border-slate-800 text-slate-600';
-                }
-              } else if (isSelected) {
-                cardStyle = 'bg-purple-900/35 border-2 border-purple-400 ring-4 ring-purple-500/20 shadow-xl shadow-purple-600/25 scale-[1.01]';
-                badgeStyle = 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-300 shadow-md';
-              }
+              let badgeStyle = isSelected
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-300 shadow-md'
+                : 'bg-slate-800/90 border-slate-700/80 text-slate-300 group-hover:border-purple-400 group-hover:text-purple-300';
 
               return (
                 <button
                   key={idx}
                   type="button"
-                  disabled={isAnswerRevealed}
+                  disabled={selectedOption !== null}
                   onClick={() => handleOptionClick(idx)}
                   className={`group min-h-[90px] sm:min-h-[110px] p-4 sm:p-5 rounded-3xl text-left flex items-center gap-3.5 relative overflow-hidden transition-all duration-200 ${cardStyle} ${
-                    isAnswerRevealed ? 'cursor-default' : 'cursor-pointer'
+                    selectedOption !== null ? 'cursor-default' : 'cursor-pointer'
                   }`}
                 >
                   {/* Option Letter Indicator */}
@@ -579,20 +567,8 @@ export default function OnlineQuizTab({
                     {opt}
                   </div>
 
-                  {/* Revealed or Selected Status Badges */}
-                  {isAnswerRevealed && isCorrectOption && (
-                    <div className="bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 px-3 py-1 rounded-full text-xs font-black flex items-center gap-1.5 shrink-0 animate-fadeIn">
-                      <Check className="w-4 h-4 text-emerald-400" />
-                      <span>Correct Solution</span>
-                    </div>
-                  )}
-                  {isAnswerRevealed && isSelected && !isCorrectOption && (
-                    <div className="bg-rose-500/20 border border-rose-400/50 text-rose-300 px-3 py-1 rounded-full text-xs font-black flex items-center gap-1.5 shrink-0 animate-fadeIn">
-                      <XCircle className="w-4 h-4 text-rose-400" />
-                      <span>Your Answer</span>
-                    </div>
-                  )}
-                  {!isAnswerRevealed && isSelected && (
+                  {/* Selected Status Badge */}
+                  {isSelected && (
                     <div className="bg-purple-500/25 border border-purple-400/60 text-purple-200 px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 animate-fadeIn shrink-0">
                       <Check className="w-4 h-4 text-purple-300 stroke-[3]" />
                       <span className="text-xs font-black uppercase tracking-wider">Selected</span>
@@ -602,47 +578,6 @@ export default function OnlineQuizTab({
               );
             })}
           </div>
-
-          {/* Post-Answer Explanation Callout & Auto-Advance Indicator */}
-          {isAnswerRevealed && (
-            <div className="p-5 sm:p-6 rounded-3xl bg-slate-900/95 border border-slate-700 shadow-2xl space-y-3.5 animate-fadeIn">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    {selectedOption === currentQuestion.correctOptionIndex ? (
-                      <span className="text-emerald-400 font-black text-sm sm:text-base flex items-center gap-1.5">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400" /> Correct Answer! (+{100 + (streak > 0 ? (streak - 1) * 20 : 0)} pts)
-                      </span>
-                    ) : (
-                      <span className="text-rose-400 font-black text-sm sm:text-base flex items-center gap-1.5">
-                        <XCircle className="w-5 h-5 text-rose-400" /> Incorrect Response
-                      </span>
-                    )}
-                  </div>
-                  {currentQuestion.explanation && (
-                    <p className="text-xs sm:text-sm text-slate-300 pt-0.5 leading-relaxed">
-                      💡 <span className="font-semibold text-purple-300">Explanation:</span> {currentQuestion.explanation}
-                    </p>
-                  )}
-                </div>
-
-                {/* Auto-Advance Telemetry Indicator */}
-                <div className="flex items-center gap-2 text-xs font-bold text-purple-300 bg-purple-950/70 border border-purple-500/40 px-3.5 py-2 rounded-2xl shrink-0 shadow-sm">
-                  <div className="w-3.5 h-3.5 rounded-full border-2 border-purple-400 border-t-transparent animate-spin" />
-                  <span>
-                    {currentIndex + 1 < questions.length
-                      ? 'Advancing to next question...'
-                      : 'Preparing scorecard...'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Smooth Animated Auto-Advance Progress Bar */}
-              <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-purple-500 via-indigo-400 to-emerald-400 rounded-full animate-bar-grow w-full" />
-              </div>
-            </div>
-          )}
         </div>
       )}
 
