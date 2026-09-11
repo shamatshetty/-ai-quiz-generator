@@ -7,10 +7,8 @@ import {
   Clock,
   BookOpen,
   Award,
-  ChevronRight,
-  Download
+  ChevronRight
 } from 'lucide-react';
-import { downloadStudentQuizReportCSV } from '../../../utils/exportReport';
 
 export default function QuizScoresTab({
   history,
@@ -262,29 +260,6 @@ export default function QuizScoresTab({
                     {/* Action */}
                     <td className="py-4 px-4 sm:px-6 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadStudentQuizReportCSV({
-                              studentName: 'Student',
-                              subject: item.subject,
-                              quizTitle: item.quizTitle,
-                              score: item.correctCount,
-                              maxScore: item.totalQuestions,
-                              accuracyPercentage: item.accuracyPercentage,
-                              timeTaken: item.timeTaken,
-                              date: item.attendedAt,
-                              questions: item.questions || []
-                            });
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:bg-emerald-600 hover:border-emerald-600 text-slate-300 hover:text-white font-bold text-xs transition-all shadow-sm cursor-pointer"
-                          title="Download Quiz Report (CSV)"
-                        >
-                          <Download className="w-3.5 h-3.5 text-emerald-400 group-hover:text-white" />
-                          <span className="hidden sm:inline">CSV</span>
-                        </button>
-
                         <button
                           type="button"
                           onClick={(e) => {

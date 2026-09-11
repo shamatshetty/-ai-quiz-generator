@@ -4,7 +4,6 @@ import { Trophy, Download, RotateCcw, Crown, Award, Medal, Users, FileText, BarC
 import soundManager from '../../utils/sound';
 import QuestionReviewView from './QuestionReviewView';
 import {
-  downloadStudentQuizReportCSV,
   triggerBlobDownload
 } from '../../utils/exportReport';
 
@@ -119,34 +118,6 @@ export default function WinnersPodiumView({
 
     triggerBlobDownload(csvContent, `QuizResults_${roomCode}_${Date.now()}.csv`);
     setIsExporting(false);
-  };
-
-  const handleDownloadMyReportCSV = () => {
-    const studentName = myReview?.name || 'Student';
-    const userAnswers = myReview?.answers || [];
-    const formattedQuestions = questions.map((q, idx) => {
-      const studentAns = userAnswers[idx];
-      return {
-        ...q,
-        options: q.options,
-        correctOptionIndex: q.correctOptionIndex,
-        isCorrect: studentAns?.isCorrect,
-        explanation: q.explanation
-      };
-    });
-
-    downloadStudentQuizReportCSV({
-      studentName,
-      subject: 'Classroom Live Assessment',
-      quizTitle,
-      score: myReview?.score ?? 0,
-      maxScore: questions.length,
-      accuracyPercentage: myReview?.accuracyPercentage ?? 0,
-      timeTaken: 'Live Multiplayer Session',
-      date: new Date(),
-      questions: formattedQuestions,
-      studentAnswers: userAnswers
-    });
   };
 
   return (
@@ -355,7 +326,7 @@ export default function WinnersPodiumView({
 
       {/* Bottom Action Buttons (CSV Export & Play Again) */}
       <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-slate-800/80">
-        {isHost ? (
+        {isHost && (
           <button
             onClick={handleExportCSV}
             disabled={isExporting}
@@ -363,14 +334,6 @@ export default function WinnersPodiumView({
           >
             <Download className="w-5 h-5 text-emerald-400" />
             <span>{isExporting ? 'Generating CSV...' : 'Export Class Results (CSV)'}</span>
-          </button>
-        ) : (
-          <button
-            onClick={handleDownloadMyReportCSV}
-            className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-heading font-black rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center gap-2 transition-all transform active:scale-95 cursor-pointer"
-          >
-            <Download className="w-5 h-5" />
-            <span>Download My Scorecard (CSV)</span>
           </button>
         )}
 

@@ -6,11 +6,9 @@ import {
   Clock,
   BookOpen,
   ChevronDown,
-  Download,
   Printer
 } from 'lucide-react';
 import {
-  downloadStudentQuizReportCSV,
   printStudentQuizReport
 } from '../../../utils/exportReport';
 
@@ -165,29 +163,6 @@ export default function AnswerReviewTab({
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!activeQuiz) return;
-                  downloadStudentQuizReportCSV({
-                    studentName: 'Student',
-                    subject: activeQuiz.subject || 'General Knowledge',
-                    quizTitle: activeQuiz.quizTitle || 'Quiz Assessment',
-                    score: activeQuiz.score,
-                    maxScore: activeQuiz.totalQuestions,
-                    accuracyPercentage: activeQuiz.accuracyPercentage,
-                    timeTaken: activeQuiz.timeTaken,
-                    date: activeQuiz.attendedAt,
-                    questions: activeQuiz.questions || []
-                  });
-                }}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 active:scale-95"
-                title="Download this quiz review report as CSV"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export CSV</span>
-              </button>
-
               <button
                 type="button"
                 onClick={() => {

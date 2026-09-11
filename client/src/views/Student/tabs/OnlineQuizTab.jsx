@@ -25,7 +25,6 @@ import {
 import TimerRing from '../../../components/TimerRing';
 import soundManager from '../../../utils/sound';
 import {
-  downloadStudentQuizReportCSV,
   printStudentQuizReport
 } from '../../../utils/exportReport';
 
@@ -774,29 +773,6 @@ export default function OnlineQuizTab({
 
           {/* Action Buttons */}
           <div className="pt-4 border-t border-slate-800 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-            <button
-              type="button"
-              onClick={() => {
-                downloadStudentQuizReportCSV({
-                  studentName: user?.name || 'Student',
-                  subject: subject || 'General Knowledge',
-                  quizTitle: `${subject} Assessment`,
-                  score,
-                  maxScore: questions.length,
-                  accuracyPercentage,
-                  timeTaken: 'Completed',
-                  date: new Date(),
-                  questions,
-                  studentAnswers
-                });
-              }}
-              className="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-heading font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer hover:scale-105 active:scale-95"
-              title="Download detailed student quiz report as CSV"
-            >
-              <Download className="w-4 h-4" />
-              <span>Download Report (CSV)</span>
-            </button>
-
             <button
               type="button"
               onClick={() => {
