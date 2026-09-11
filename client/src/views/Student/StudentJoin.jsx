@@ -271,7 +271,7 @@ export default function StudentJoin({ onJoinSuccess, initialRoomCode = '', onBac
                 className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 font-bold transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>&larr; Back to Portal / Home</span>
+                <span>&larr; {user ? 'Back to Dashboard' : 'Back to Login'}</span>
               </button>
             </div>
           )}

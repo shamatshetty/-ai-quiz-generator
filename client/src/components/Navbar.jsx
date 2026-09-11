@@ -57,7 +57,7 @@ export default function Navbar({
           <div
             className="flex items-center space-x-2.5 cursor-pointer group"
             onClick={onDashboard || onBack || onLeave}
-            title="Return to Dashboard / Home"
+            title="Return to Dashboard / Login"
           >
             <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-purple-600 via-pink-500 to-amber-400 flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:scale-105 transition-transform">
               <span className="text-lg font-bold select-none">⚡</span>

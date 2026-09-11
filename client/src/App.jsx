@@ -635,7 +635,7 @@ export default function App() {
               <StudentJoin
                 initialRoomCode={roomCode}
                 onJoinSuccess={handleStudentJoinSuccess}
-                onBack={navBack?.action || (() => setScreen('home'))}
+                onBack={navBack?.action || (isAuthenticated ? () => setScreen('student-dashboard') : handleSignOutApp)}
               />
             )}
 
