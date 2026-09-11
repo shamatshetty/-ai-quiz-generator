@@ -183,7 +183,25 @@ export default function TeacherSidebarNav({
       </nav>
 
       {/* 4. Footer Utilities */}
-      <div className="p-3 border-t border-slate-800/80">
+      <div className="p-3 border-t border-slate-800/80 space-y-2">
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof onBack === 'function') {
+              onBack();
+            } else {
+              logout();
+            }
+          }}
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer ${
+            isCollapsed ? 'justify-center' : ''
+          }`}
+          title="Back to Login Page"
+        >
+          <ArrowLeft className="w-4 h-4 text-emerald-400" />
+          {!isCollapsed && <span>Back to Login</span>}
+        </button>
+
         {/* Desktop Collapse / Expand Toggle */}
         <div className="hidden lg:flex items-center justify-between pt-1">
           <button

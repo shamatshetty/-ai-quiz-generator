@@ -317,8 +317,7 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
               title={activeTab !== 'overview' ? 'Back to Overview' : 'Back to Login Page'}
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1 text-purple-400" />
-              <span className="hidden sm:inline">{activeTab !== 'overview' ? 'Back' : 'Login'}</span>
-              <span className="sm:hidden">{activeTab !== 'overview' ? 'Back' : 'Login'}</span>
+              <span>{activeTab !== 'overview' ? 'Back' : 'Back to Login'}</span>
             </button>
 
             {/* Mobile Hamburger Toggle */}
