@@ -105,7 +105,8 @@ router.post('/register', async (req, res) => {
         password: hashedPassword,
         role: normalizedRole,
         avatar: avatar || defaultAvatar,
-        subject: subject?.trim() || (normalizedRole === 'TEACHER' ? 'General' : null)
+        subject: subject?.trim() || (normalizedRole === 'TEACHER' ? 'General' : null),
+        lastLoginAt: new Date()
       }
     });
 
@@ -166,15 +167,21 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Generate token with user's verified registered role
-    const token = generateToken(user);
+    // Update lastLoginAt timestamp
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() }
+    });
 
-    console.log('[Auth] Login successful for:', normalizedEmail, 'role:', user.role);
+    // Generate token with user's verified registered role
+    const token = generateToken(updatedUser);
+
+    console.log('[Auth] Login successful for:', normalizedEmail, 'role:', updatedUser.role);
 
     res.json({
       success: true,
       token,
-      user: sanitizeUser(user)
+      user: sanitizeUser(updatedUser)
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -303,8 +310,14 @@ router.post('/demo-login', async (req, res) => {
       user = await prisma.user.create({
         data: {
           ...demoConfig,
-          password: defaultHashedPassword
+          password: defaultHashedPassword,
+          lastLoginAt: new Date()
         }
+      });
+    } else {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() }
       });
     }
 
@@ -343,13 +356,18 @@ router.post('/google', async (req, res) => {
     });
 
     if (user) {
-      // If user exists, update their name/avatar if empty
+      // If user exists, update their name/avatar and lastLoginAt
+      const updateData = { lastLoginAt: new Date() };
       if ((!user.name || user.name === user.email.split('@')[0]) && displayName) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: { name: displayName, avatar: user.avatar || userAvatar }
-        });
+        updateData.name = displayName;
       }
+      if (avatar) {
+        updateData.avatar = avatar;
+      }
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: updateData
+      });
     } else {
       // Create new user authenticated via Google
       const randomPassword = await bcrypt.hash('google-oauth-' + Math.random().toString(36), 10);
@@ -360,7 +378,8 @@ router.post('/google', async (req, res) => {
           password: randomPassword,
           role: normalizedRole,
           avatar: userAvatar,
-          subject: normalizedRole === 'TEACHER' ? 'General Education' : null
+          subject: normalizedRole === 'TEACHER' ? 'General Education' : null,
+          lastLoginAt: new Date()
         }
       });
     }

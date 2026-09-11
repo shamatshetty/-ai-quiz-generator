@@ -16,6 +16,7 @@ model User {
   role      String   // "TEACHER" or "STUDENT"
   avatar    String?  // Avatar emoji or seed e.g. "🚀"
   subject   String?  // Teaching subject / department e.g. "Computer Science"
+  lastLoginAt    DateTime?       @default(now())
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   quizzes        Quiz[]

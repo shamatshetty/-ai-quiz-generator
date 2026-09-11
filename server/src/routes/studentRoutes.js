@@ -416,12 +416,23 @@ router.post('/practice-session', async (req, res) => {
     });
 
     // 3. Create PlayerSession
+    let playerName = authUser?.name;
+    let playerAvatar = authUser?.avatar;
+
+    if ((!playerName || !playerAvatar) && targetUserId) {
+      const dbUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+      if (dbUser) {
+        if (!playerName) playerName = dbUser.name;
+        if (!playerAvatar) playerAvatar = dbUser.avatar;
+      }
+    }
+
     const playerSession = await prisma.playerSession.create({
       data: {
         sessionToken: targetSessionToken,
         userId: targetUserId,
-        name: authUser?.name || 'Self-Paced Learner',
-        avatar: authUser?.avatar || '🚀',
+        name: playerName || 'Self-Paced Learner',
+        avatar: playerAvatar || '🚀',
         quizSessionId: quizSession.id,
         score: Number(score) || 0,
         streak: Math.max(1, Math.min(5, Math.floor(score / 200))),
