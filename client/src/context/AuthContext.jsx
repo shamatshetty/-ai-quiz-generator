@@ -239,6 +239,16 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const getGoogleDeviceAccounts = async () => {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/auth/google/device-accounts`);
+      const data = await res.json();
+      return data.accounts || [];
+    } catch {
+      return [];
+    }
+  };
+
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
@@ -270,6 +280,7 @@ export function AuthProvider({ children }) {
         verifyResetToken,
         confirmPasswordReset,
         checkEmail,
+        getGoogleDeviceAccounts,
         logout,
         updateUser
       }}

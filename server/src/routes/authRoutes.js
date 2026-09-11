@@ -543,7 +543,23 @@ router.post('/demo-login', async (req, res) => {
  */
 const handleGoogleAuth = async (req, res) => {
   try {
-    const { email, name, avatar, role = 'STUDENT', googleId } = req.body;
+    let { email, name, avatar, role = 'STUDENT', googleId, credential } = req.body;
+
+    // Decode Google Identity Services credential if provided
+    if (credential && !email) {
+      try {
+        const parts = credential.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+          if (payload.email) email = payload.email;
+          if (payload.name) name = payload.name;
+          if (payload.picture) avatar = payload.picture;
+          if (payload.sub) googleId = payload.sub;
+        }
+      } catch (decodeErr) {
+        console.warn('Could not decode Google credential JWT:', decodeErr);
+      }
+    }
 
     if (!email || !email.trim()) {
       return res.status(400).json({ success: false, error: 'Google email is required' });
@@ -610,6 +626,47 @@ const handleGoogleAuth = async (req, res) => {
 
 router.post('/google', handleGoogleAuth);
 router.post('/oauth/google', handleGoogleAuth);
+
+/**
+ * GET /api/auth/google/device-accounts
+ * Return existing Google / Gmail accounts recognized on this system
+ */
+router.get('/google/device-accounts', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        OR: [
+          { provider: 'google' },
+          { email: { contains: '@gmail.com' } },
+          { email: { contains: '@googlemail.com' } }
+        ]
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatar: true,
+        lastLoginAt: true
+      },
+      orderBy: { lastLoginAt: 'desc' },
+      take: 6
+    });
+
+    res.json({
+      success: true,
+      accounts: users.map(u => ({
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        avatar: u.avatar,
+        lastUsed: u.lastLoginAt ? new Date(u.lastLoginAt).getTime() : Date.now()
+      }))
+    });
+  } catch (err) {
+    res.json({ success: true, accounts: [] });
+  }
+});
 
 /**
  * Unified Microsoft OAuth Handler

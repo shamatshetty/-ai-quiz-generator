@@ -148,7 +148,6 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [showOAuthModal, setShowOAuthModal] = useState(false);
-  const [oauthProvider, setOauthProvider] = useState('google');
   const [error, setError] = useState('');
   const [errorCode, setErrorCode] = useState('');
   const [successBanner, setSuccessBanner] = useState('');
@@ -885,7 +884,6 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                     <button
                       type="button"
                       onClick={() => {
-                        setOauthProvider('google');
                         setShowOAuthModal(true);
                       }}
                       className="text-cyan-300 hover:text-white underline font-bold cursor-pointer"
@@ -933,47 +931,22 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
             </span>
           </div>
 
-          {/* Official Email Accounts (OAuth 2.0 Account Pickers) */}
+          {/* Official Google OAuth 2.0 Account Picker Login */}
           <div className="space-y-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {/* Google OAuth Button */}
-              <button
-                type="button"
-                disabled={loading || demoLoading}
-                onClick={() => {
-                  setOauthProvider('google');
-                  setShowOAuthModal(true);
-                }}
-                className="w-full py-2.5 px-3 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-slate-700/80 hover:border-purple-500/50 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
-              >
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
-                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z" />
-                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.97 0 12s.45 3.82 1.25 5.42l4.03-3.15z" />
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-                </svg>
-                <span>Google</span>
-              </button>
-
-              {/* Microsoft OAuth Button */}
-              <button
-                type="button"
-                disabled={loading || demoLoading}
-                onClick={() => {
-                  setOauthProvider('microsoft');
-                  setShowOAuthModal(true);
-                }}
-                className="w-full py-2.5 px-3 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-slate-700/80 hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.15)] text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
-              >
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 21 21">
-                  <rect x="1" y="1" width="9" height="9" fill="#F25022" />
-                  <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
-                  <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
-                  <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
-                </svg>
-                <span>Microsoft</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={loading || demoLoading}
+              onClick={() => setShowOAuthModal(true)}
+              className="w-full py-3 px-4 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-slate-700/80 hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(66,133,244,0.18)] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 group"
+            >
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z" />
+                <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.97 0 12s.45 3.82 1.25 5.42l4.03-3.15z" />
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+              </svg>
+              <span>Continue with Google</span>
+            </button>
 
             {/* Instant 1-Click Demo Login with Continuous Soft Glow Pulse */}
             <button
@@ -1047,7 +1020,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
         onSuccessRedirect={handlePasswordResetSuccess}
       />
 
-      {/* OAuth Account Picker Modal (Google & Microsoft) */}
+      {/* Google Account Picker Modal */}
       <OAuthAccountPickerModal
         isOpen={showOAuthModal}
         onClose={() => setShowOAuthModal(false)}
@@ -1057,7 +1030,6 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
           }
         }}
         currentRole={role}
-        defaultProvider={oauthProvider}
       />
     </div>
   );
