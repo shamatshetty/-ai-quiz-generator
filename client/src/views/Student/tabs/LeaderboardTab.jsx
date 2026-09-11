@@ -30,11 +30,11 @@ export default function LeaderboardTab({
         <div>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold uppercase tracking-wider mb-1 border border-amber-500/30">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Class Highest Marks Rankings</span>
+            <span>Class Leaderboard Rankings</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-heading font-bold text-white">Highest Marks Leaderboard</h1>
+          <h1 className="text-xl sm:text-2xl font-heading font-bold text-white">Class Leaderboard</h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            Real-time rankings based on highest marks, quiz score achievements, and accuracy.
+            Real-time rankings based on quiz score achievements and accuracy.
           </p>
         </div>
 
@@ -116,7 +116,7 @@ export default function LeaderboardTab({
       {/* 3. Search & Leaderboard Table */}
       <div className="dashboard-card overflow-hidden space-y-4 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h3 className="text-lg font-heading font-black text-white">Highest Marks Standings</h3>
+          <h3 className="text-lg font-heading font-black text-white">Leaderboard Standings</h3>
           <div className="relative w-full sm:w-72">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
@@ -138,7 +138,7 @@ export default function LeaderboardTab({
                 <th className="py-3 px-4">Quizzes Played</th>
                 <th className="py-3 px-4">Accuracy</th>
                 <th className="py-3 px-4">Streak</th>
-                <th className="py-3 px-4 sm:px-6 text-right">Highest Marks</th>
+                <th className="py-3 px-4 sm:px-6 text-right">Leaderboard Score</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -219,7 +219,7 @@ export default function LeaderboardTab({
                       </div>
                     </td>
 
-                    {/* Highest Marks */}
+                    {/* Score */}
                     <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap font-mono font-bold text-purple-400 text-xs sm:text-sm">
                       {peer.score} Marks
                     </td>

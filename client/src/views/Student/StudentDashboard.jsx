@@ -336,7 +336,7 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
                 {activeTab === 'practice' && 'Online Quiz by Subject'}
                 {activeTab === 'scores' && 'Quiz Scores & Results'}
                 {activeTab === 'review' && 'Detailed Answer Review'}
-                {activeTab === 'leaderboard' && 'Highest Marks'}
+                {activeTab === 'leaderboard' && 'Leaderboard'}
                 {activeTab === 'settings' && 'Account & Preferences'}
               </h2>
               <span className="text-xs text-purple-300 font-medium hidden sm:block">

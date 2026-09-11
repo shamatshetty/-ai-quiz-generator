@@ -23,7 +23,7 @@ export const NAV_ITEMS = [
   { id: 'practice', label: 'Online Quiz', icon: Sparkles, badge: 'AI' },
   { id: 'scores', label: 'Quiz Scores', icon: GraduationCap, badge: null },
   { id: 'review', label: 'Answer Review', icon: CheckCircle2, badge: null },
-  { id: 'leaderboard', label: 'Highest Marks', icon: Trophy, badge: 'Live' },
+  { id: 'leaderboard', label: 'Leaderboard', icon: Trophy, badge: 'Live' },
   { id: 'settings', label: 'Settings', icon: Settings, badge: null },
 ];
 

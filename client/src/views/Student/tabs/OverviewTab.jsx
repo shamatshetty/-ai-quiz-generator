@@ -187,10 +187,10 @@ export default function OverviewTab({
           </div>
         </div>
 
-        {/* Highest Marks Rank */}
+        {/* Leaderboard Rank */}
         <div className="dashboard-card p-5 space-y-3 animate-stat-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider badge-caps">Highest Marks Rank</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider badge-caps">Leaderboard Rank</span>
             <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center">
               <Award className="w-4 h-4" />
             </div>
@@ -335,7 +335,7 @@ export default function OverviewTab({
                 <span>Next Milestone</span>
                 <span className="text-[10px] px-2 py-0.5 bg-purple-500/20 rounded-full font-black border border-purple-500/30">150 Marks to #1</span>
               </div>
-              <p className="text-xs text-purple-200/90 leading-relaxed">Score 80%+ on your next quiz to climb to 1st place in highest marks!</p>
+              <p className="text-xs text-purple-200/90 leading-relaxed">Score 80%+ on your next quiz to climb to 1st place on the leaderboard!</p>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/30 space-y-1.5">

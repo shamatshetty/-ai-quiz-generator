@@ -295,7 +295,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
               </span>
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-lg mx-auto lg:mx-0 animate-reveal-3">
-              The modern interactive assessment platform. Real-time quiz battles, instant highest marks leaderboards, and intelligent progress tracking.
+              The modern interactive assessment platform. Real-time quiz battles, instant leaderboards, and intelligent progress tracking.
             </p>
           </div>
 
@@ -328,7 +328,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-extrabold uppercase badge-caps animate-badge-pulse">Live</span>
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Live highest marks rankings updated after every answered question with podium celebrations.
+                  Live leaderboard rankings updated after every answered question with podium celebrations.
                 </p>
               </div>
             </div>
