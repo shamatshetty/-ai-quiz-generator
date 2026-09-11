@@ -12,7 +12,8 @@ import {
   Radio,
   BookOpen,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
@@ -37,7 +38,7 @@ function formatRelativeTime(isoString) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export default function StudentDashboard({ onJoinRoom, initialRoomCode = '' }) {
+export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onBack }) {
   const { user, token } = useAuth();
   const { socket, serverUrl, isMuted, toggleSound } = useSocket();
 
@@ -67,7 +68,7 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '' }) {
   const [activeNotifFilter, setActiveNotifFilter] = useState('all'); // 'all' | 'live' | 'quizzes'
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(true);
     fetchNotifications();
   }, [token, user]);
 
@@ -103,9 +104,9 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '' }) {
     }
   };
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (showSpinner = false) => {
     try {
-      setLoading(true);
+      if (showSpinner) setLoading(true);
       const headers = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -137,7 +138,7 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '' }) {
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
@@ -290,6 +291,7 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '' }) {
         onOpenJoinModal={() => setShowJoinModal(true)}
         currentUserRank={currentUserRank}
         stats={stats}
+        onBack={onBack}
       />
 
       {/* 2. Main Content Area */}
@@ -301,6 +303,24 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '' }) {
         {/* Sleek Dark Top Header Bar */}
         <header className="sticky top-0 z-20 bg-[#090D1F]/90 backdrop-blur-xl border-b border-slate-800/80 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-3">
+            {/* Edge Back Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (activeTab !== 'overview') {
+                  setActiveTab('overview');
+                } else if (typeof onBack === 'function') {
+                  onBack();
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500/50 text-slate-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-105 active:scale-95 group shrink-0"
+              title={activeTab !== 'overview' ? 'Back to Overview' : 'Back to Home'}
+            >
+              <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1 text-purple-400" />
+              <span className="hidden sm:inline">{activeTab !== 'overview' ? 'Back' : 'Home'}</span>
+              <span className="sm:hidden">Back</span>
+            </button>
+
             {/* Mobile Hamburger Toggle */}
             <button
               type="button"

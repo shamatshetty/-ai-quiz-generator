@@ -12,7 +12,8 @@ import {
   Volume2,
   VolumeX,
   X,
-  Sparkles
+  Sparkles,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
@@ -35,7 +36,8 @@ export default function SidebarNav({
   onCloseMobile,
   onOpenJoinModal,
   currentUserRank,
-  stats
+  stats,
+  onBack
 }) {
   const { user, logout } = useAuth();
   const { isMuted, toggleSound } = useSocket();
@@ -210,6 +212,19 @@ export default function SidebarNav({
 
       {/* 5. Footer Utilities & Sign Out */}
       <div className="p-3 border-t border-slate-800/80 space-y-1">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer mb-1 ${
+              isCollapsed ? 'justify-center' : ''
+            }`}
+            title="Back to Home / Portal"
+          >
+            <ArrowLeft className="w-4 h-4 text-purple-400" />
+            {!isCollapsed && <span>Back to Home</span>}
+          </button>
+        )}
         <div className="flex items-center justify-between gap-1">
           {/* Sound Toggle */}
           <button

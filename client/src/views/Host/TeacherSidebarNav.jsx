@@ -10,7 +10,8 @@ import {
   LogOut,
   Play,
   X,
-  GraduationCap
+  GraduationCap,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -29,7 +30,8 @@ export default function TeacherSidebarNav({
   mobileOpen,
   onCloseMobile,
   totalQuizzes = 0,
-  activeRoomCode = null
+  activeRoomCode = null,
+  onBack
 }) {
   const { user, logout } = useAuth();
 
@@ -182,6 +184,20 @@ export default function TeacherSidebarNav({
 
       {/* 4. Footer Utilities */}
       <div className="p-3 border-t border-slate-800/80 space-y-2">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer ${
+              isCollapsed ? 'justify-center' : ''
+            }`}
+            title="Back to Home / Portal"
+          >
+            <ArrowLeft className="w-4 h-4 text-emerald-400" />
+            {!isCollapsed && <span>Back to Home</span>}
+          </button>
+        )}
+
         {/* Desktop Collapse / Expand Toggle */}
         <div className="hidden lg:flex items-center justify-between pt-1">
           <button

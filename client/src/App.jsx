@@ -563,6 +563,7 @@ export default function App() {
                 onRoomCreated={handleHostRoomCreated}
                 activeRoomCode={roomCode}
                 onEnterActiveRoom={() => setScreen(questionData ? 'host-live' : 'host-lobby')}
+                onBack={() => setScreen('home')}
               />
             )}
 
@@ -626,6 +627,7 @@ export default function App() {
                   setRoomCode(pin);
                   setScreen('student-join');
                 }}
+                onBack={() => setScreen('home')}
               />
             )}
 

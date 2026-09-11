@@ -10,7 +10,8 @@ import {
   Clock,
   CheckCircle2,
   Bell,
-  PenTool
+  PenTool,
+  ArrowLeft
 } from 'lucide-react';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -23,7 +24,8 @@ import TeacherReportsTab from './tabs/TeacherReportsTab';
 export default function HostDashboard({
   onRoomCreated,
   activeRoomCode = null,
-  onEnterActiveRoom = null
+  onEnterActiveRoom = null,
+  onBack
 }) {
   const { socket, serverUrl } = useSocket();
   const { user } = useAuth();
@@ -214,6 +216,7 @@ export default function HostDashboard({
         onCloseMobile={() => setMobileOpen(false)}
         totalQuizzes={quizzes.length}
         activeRoomCode={activeRoomCode}
+        onBack={onBack}
       />
 
       {/* 7. Main Content Area */}
@@ -225,6 +228,24 @@ export default function HostDashboard({
         {/* Sleek Dark Top Header Bar */}
         <header className="sticky top-0 z-20 bg-[#090D1F]/90 backdrop-blur-xl border-b border-slate-800/80 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-3">
+            {/* Edge Back Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (activeTab !== 'overview') {
+                  setActiveTab('overview');
+                } else if (typeof onBack === 'function') {
+                  onBack();
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-emerald-500/50 text-slate-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-105 active:scale-95 group shrink-0"
+              title={activeTab !== 'overview' ? 'Back to Overview' : 'Back to Home'}
+            >
+              <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1 text-emerald-400" />
+              <span className="hidden sm:inline">{activeTab !== 'overview' ? 'Back' : 'Home'}</span>
+              <span className="sm:hidden">Back</span>
+            </button>
+
             {/* Mobile Hamburger Toggle */}
             <button
               type="button"

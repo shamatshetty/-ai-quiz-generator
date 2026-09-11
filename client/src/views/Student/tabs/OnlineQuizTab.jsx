@@ -19,7 +19,8 @@ import {
   Download,
   Printer,
   FileSpreadsheet,
-  LayoutDashboard
+  LayoutDashboard,
+  ArrowLeft
 } from 'lucide-react';
 import TimerRing from '../../../components/TimerRing';
 import soundManager from '../../../utils/sound';
@@ -79,6 +80,9 @@ export default function OnlineQuizTab({
     if (redirectTimerRef.current) clearInterval(redirectTimerRef.current);
     setPhase('setup');
     setSubject('');
+    if (typeof onQuizCompleted === 'function') {
+      onQuizCompleted();
+    }
     if (typeof onReturnToDashboard === 'function') {
       onReturnToDashboard();
     }
@@ -315,10 +319,7 @@ export default function OnlineQuizTab({
           userId: user?.id || null
         })
       });
-
-      if (typeof onQuizCompleted === 'function') {
-        onQuizCompleted();
-      }
+      // onQuizCompleted is deferred to handleReturnToDashboard to preserve the full 5-second score duration
     } catch (err) {
       console.error('Failed to record practice quiz in history:', err);
     }
@@ -332,6 +333,18 @@ export default function OnlineQuizTab({
       {/* 1. SETUP PHASE */}
       {phase === 'setup' && (
         <div className="space-y-6">
+          {/* Edge Back to Dashboard Button */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={handleReturnToDashboard}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-purple-500/50 text-slate-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-105 active:scale-95 group"
+            >
+              <ArrowLeft className="w-4 h-4 text-purple-400 group-hover:-translate-x-1 transition-transform" />
+              <span>Back to Dashboard</span>
+            </button>
+          </div>
+
           {/* Hero Banner */}
           <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-purple-900/90 via-indigo-900/80 to-slate-900/90 border border-purple-500/40 shadow-2xl relative overflow-hidden backdrop-blur-md">
             <div className="space-y-2 relative z-10">
@@ -507,8 +520,22 @@ export default function OnlineQuizTab({
         <div className="space-y-4 animate-fadeIn">
           {/* Top Status Bar */}
           <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-slate-800 flex items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Exit the current quiz and return to dashboard?')) {
+                    handleReturnToDashboard();
+                  }
+                }}
+                className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500/50 text-slate-400 hover:text-white transition-all cursor-pointer shrink-0 hover:scale-105 active:scale-95 group"
+                title="Exit Quiz and Return to Dashboard"
+              >
+                <ArrowLeft className="w-4 h-4 text-purple-400 group-hover:-translate-x-0.5 transition-transform" />
+              </button>
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] font-black uppercase tracking-wider">
                   Question {currentIndex + 1} of {questions.length}
                 </span>
@@ -530,8 +557,9 @@ export default function OnlineQuizTab({
                 />
               </div>
             </div>
+          </div>
 
-            <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
               <div className="text-right">
                 <span className="text-xs font-bold text-slate-400 block">Score</span>
                 <span className="font-heading font-black text-amber-400 text-lg sm:text-xl">
