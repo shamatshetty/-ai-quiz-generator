@@ -86,7 +86,28 @@ export default function SidebarNav({
         )}
       </div>
 
-      {/* 2. User Profile Summary Pill */}
+      {/* 2. Top "Back to Login" Action */}
+      <div className="px-3 pt-3 pb-2 border-b border-slate-800/80">
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof onBack === 'function') {
+              onBack();
+            } else {
+              logout();
+            }
+          }}
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-purple-500/50 transition-all shadow-sm cursor-pointer group ${
+            isCollapsed ? 'justify-center px-2' : ''
+          }`}
+          title="Back to Login Page"
+        >
+          <ArrowLeft className="w-4 h-4 text-purple-400 group-hover:-translate-x-0.5 transition-transform shrink-0" />
+          {!isCollapsed && <span>Back to Login</span>}
+        </button>
+      </div>
+
+      {/* 3. User Profile Summary Pill */}
       <div className="px-3 py-3 border-b border-slate-800/80">
         {!isCollapsed ? (
           <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-slate-900/80 border border-slate-800">

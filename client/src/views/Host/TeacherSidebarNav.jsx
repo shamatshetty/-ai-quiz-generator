@@ -78,7 +78,28 @@ export default function TeacherSidebarNav({
         )}
       </div>
 
-      {/* 2. Teacher Profile Summary Card */}
+      {/* 2. Top "Back to Login" Action */}
+      <div className="px-3 pt-3 pb-2 border-b border-slate-800/80">
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof onBack === 'function') {
+              onBack();
+            } else {
+              logout();
+            }
+          }}
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/50 transition-all shadow-sm cursor-pointer group ${
+            isCollapsed ? 'justify-center px-2' : ''
+          }`}
+          title="Back to Login Page"
+        >
+          <ArrowLeft className="w-4 h-4 text-emerald-400 group-hover:-translate-x-0.5 transition-transform shrink-0" />
+          {!isCollapsed && <span>Back to Login</span>}
+        </button>
+      </div>
+
+      {/* 3. Teacher Profile Summary Card */}
       <div className="px-3 py-3 border-b border-slate-800/80">
         {!isCollapsed ? (
           <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-slate-900/80 border border-slate-800">
@@ -185,32 +206,13 @@ export default function TeacherSidebarNav({
       </nav>
 
       {/* 4. Footer Utilities */}
-      <div className="p-3 border-t border-slate-800/80 space-y-2">
-        <button
-          type="button"
-          onClick={() => {
-            if (typeof onBack === 'function') {
-              onBack();
-            } else {
-              logout();
-            }
-          }}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer ${
-            isCollapsed ? 'justify-center' : ''
-          }`}
-          title="Back to Login Page"
-        >
-          <ArrowLeft className="w-4 h-4 text-emerald-400" />
-          {!isCollapsed && <span>Back to Login</span>}
-        </button>
-
-        {/* Desktop Collapse / Expand Toggle */}
-        <div className="hidden lg:flex items-center justify-between pt-1">
+      <div className="p-3 border-t border-slate-800/80">
+        <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={onToggleCollapse}
             title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="hidden lg:flex p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
