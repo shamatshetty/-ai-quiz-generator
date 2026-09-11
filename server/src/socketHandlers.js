@@ -568,7 +568,7 @@ export function setupSocketHandlers(io) {
       io.to(player.socketId).emit('student:answer-result', ack);
       io.to(`student:${player.sessionToken}`).emit('student:answer-result', ack);
 
-      // If all players have answered, notify host and allow review before advancing
+      // If all players have answered, advance directly to next question
       if (result.allAnswered) {
         io.to(`host:${code}`).emit('host:all-players-answered', {
           totalAnswered: result.totalAnswered
@@ -579,7 +579,7 @@ export function setupSocketHandlers(io) {
           if (r && r.status === 'QUESTION') {
             advanceToNextQuestionDirectly(code);
           }
-        }, 4000);
+        }, 300);
       }
     });
 

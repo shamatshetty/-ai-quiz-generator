@@ -61,7 +61,6 @@ export default function OnlineQuizTab({
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
-  const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [studentAnswers, setStudentAnswers] = useState([]); // { questionIndex, selectedOption, isCorrect, timeTakenMs, pointsAwarded }
@@ -69,13 +68,11 @@ export default function OnlineQuizTab({
   // Timer State for active question
   const [remainingSeconds, setRemainingSeconds] = useState(20);
   const timerRef = useRef(null);
-  const autoAdvanceTimeoutRef = useRef(null);
 
   // Clear timeouts on component unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
     };
   }, []);
 
@@ -152,7 +149,6 @@ export default function OnlineQuizTab({
         setQuestions(data.questions);
         setCurrentIndex(0);
         setSelectedOption(null);
-        setIsAnswerRevealed(false);
         setScore(0);
         setStreak(0);
         setStudentAnswers([]);
@@ -175,7 +171,6 @@ export default function OnlineQuizTab({
     if (currentIndex + 1 < questions.length) {
       setCurrentIndex((prev) => prev + 1);
       setSelectedOption(null);
-      setIsAnswerRevealed(false);
       setRemainingSeconds(20);
     } else {
       finishQuiz(updatedAnswers, updatedScore);
@@ -213,11 +208,8 @@ export default function OnlineQuizTab({
     const updatedAnswers = [...studentAnswers, newAnswer];
     setStudentAnswers(updatedAnswers);
 
-    // Directly advance to the next question without showing hints or asking the user (fast, snappy 300ms transition)
-    if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
-    autoAdvanceTimeoutRef.current = setTimeout(() => {
-      advanceToNextOrFinish(updatedAnswers, updatedScore);
-    }, 300);
+    // Directly and immediately advance to the next question
+    advanceToNextOrFinish(updatedAnswers, updatedScore);
   };
 
   const handleTimeExpired = () => {
@@ -236,20 +228,15 @@ export default function OnlineQuizTab({
     const updatedAnswers = [...studentAnswers, timeoutAnswer];
     setStudentAnswers(updatedAnswers);
 
-    // Directly advance to next question on timeout
-    if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
-    autoAdvanceTimeoutRef.current = setTimeout(() => {
-      advanceToNextOrFinish(updatedAnswers, score);
-    }, 300);
+    // Directly and immediately advance to next question on timeout
+    advanceToNextOrFinish(updatedAnswers, score);
   };
 
   const handleNextQuestion = () => {
-    if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
     advanceToNextOrFinish(studentAnswers, score);
   };
 
   const finishQuiz = async (finalAnswers = studentAnswers, finalScore = score) => {
-    if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
     setPhase('completed');
     soundManager.playFanfare();
 
@@ -512,7 +499,7 @@ export default function OnlineQuizTab({
                     remainingSeconds={remainingSeconds}
                     totalSeconds={20}
                     size="sm"
-                    isPaused={isAnswerRevealed}
+                    isPaused={selectedOption !== null}
                   />
                 </div>
               )}

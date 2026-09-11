@@ -103,10 +103,6 @@ export default function StudentFeedback({ feedbackData }) {
             </div>
           </div>
         </div>
-
-        <p className="text-xs text-slate-400">
-          Advancing directly to next question...
-        </p>
       </div>
     </div>
   );

@@ -59,12 +59,12 @@ export default function StudentQuestion({
       {hasAnswered ? (
         <div className="my-2 p-3.5 rounded-2xl bg-purple-950/90 border-2 border-purple-500/70 text-center animate-pulse flex items-center justify-center gap-2.5 text-purple-200 text-sm font-bold shadow-lg shadow-purple-900/40">
           <Lock className="w-4 h-4 text-purple-400" />
-          <span>🔒 Answer Locked In (Attempt Recorded) • Auto-Saved • Advancing...</span>
+          <span>🔒 Answer Recorded</span>
         </div>
       ) : isTimeUp ? (
         <div className="my-2 p-3.5 rounded-2xl bg-amber-950/90 border-2 border-amber-500/70 text-center animate-pulse flex items-center justify-center gap-2.5 text-amber-200 text-sm font-bold shadow-lg shadow-amber-900/40">
           <Lock className="w-4 h-4 text-amber-400" />
-          <span>⏱️ Time Expired • Auto-Submitting Response...</span>
+          <span>⏱️ Time Expired</span>
         </div>
       ) : null}
 
@@ -122,10 +122,10 @@ export default function StudentQuestion({
         <Sparkles className="w-3.5 h-3.5 text-purple-400" />
         <span>
           {hasAnswered
-            ? 'Answer registered! Next question loading...'
+            ? 'Answer registered.'
             : isTimeUp
-            ? 'Time is up! Advancing directly...'
-            : 'Tap any arcade pad to lock in your answer. Score review at the end!'}
+            ? 'Time is up.'
+            : 'Tap any option to submit your answer.'}
         </span>
       </div>
     </div>
