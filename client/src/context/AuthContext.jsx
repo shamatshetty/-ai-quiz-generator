@@ -85,7 +85,9 @@ export function AuthProvider({ children }) {
       });
       const data = await res.json();
       if (!data.success) {
-        throw new Error(data.error || 'Login failed');
+        const error = new Error(data.error || 'Login failed');
+        error.code = data.code;
+        throw error;
       }
       saveAuthData(data.token, data.user);
       return data.user;
@@ -103,7 +105,9 @@ export function AuthProvider({ children }) {
       });
       const data = await res.json();
       if (!data.success) {
-        throw new Error(data.error || 'Registration failed');
+        const error = new Error(data.error || 'Registration failed');
+        error.code = data.code;
+        throw error;
       }
       saveAuthData(data.token, data.user);
       return data.user;

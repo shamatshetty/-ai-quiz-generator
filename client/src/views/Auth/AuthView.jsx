@@ -149,6 +149,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
@@ -174,6 +175,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setErrorCode('');
 
     // Capture exact current DOM input values or fallback to React state
     const currentEmail = (emailInputRef.current?.value || email || '').trim();
@@ -231,6 +233,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
       }
     } catch (err) {
       setError(err.message || 'Authentication failed. Please verify your credentials.');
+      setErrorCode(err.code || '');
       triggerCardShake();
     } finally {
       setLoading(false);
@@ -784,15 +787,63 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
               </div>
             )}
 
-            {/* Error Message */}
+            {/* Error Message with Contextual Action CTAs */}
             {error && (
-              <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold flex flex-col gap-1.5 animate-fade-scale">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                  <span>{error}</span>
+              <div className="p-3.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs font-semibold flex flex-col gap-2.5 animate-fade-scale shadow-lg">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{error}</span>
                 </div>
-                {mode === 'login' && (
-                  <div className="pl-6 flex items-center gap-3 text-[11px]">
+
+                {/* Sign Up Flow: If email already exists -> provide "Go to Login" button */}
+                {(errorCode === 'EMAIL_ALREADY_EXISTS' || error.includes('already exists') || error.includes('log in instead')) && (
+                  <div className="pl-6 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('login');
+                        setError('');
+                        setErrorCode('');
+                        const targetEmail = emailInputRef.current?.value || email;
+                        const roleCreds = getSavedCredentials(role);
+                        if (roleCreds && roleCreds.email === targetEmail) {
+                          setPassword(roleCreds.password || '');
+                        } else {
+                          setPassword('');
+                        }
+                        setPasswordTouched(false);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
+                    >
+                      <span>Go to Login</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Login Flow: If email not registered yet -> provide "Go to Sign Up" button */}
+                {(errorCode === 'EMAIL_NOT_FOUND' || error.includes('not registered yet') || error.includes('sign up first')) && (
+                  <div className="pl-6 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('register');
+                        setError('');
+                        setErrorCode('');
+                        setPassword('');
+                        setPasswordTouched(false);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
+                    >
+                      <span>Go to Sign Up</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Reset / Set Password Link if password was incorrect or other login error */}
+                {mode === 'login' && errorCode !== 'EMAIL_NOT_FOUND' && !error.includes('not registered') && (
+                  <div className="pl-6 flex items-center gap-3 text-[11px] text-slate-300">
                     <button
                       type="button"
                       onClick={() => {
@@ -803,7 +854,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                       }}
                       className="text-purple-300 hover:text-white underline font-bold cursor-pointer"
                     >
-                      Reset / Set Password
+                      Forgot / Reset Password
                     </button>
                     <span className="text-slate-500">•</span>
                     <button

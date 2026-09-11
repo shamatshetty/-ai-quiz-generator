@@ -65,7 +65,8 @@ router.post('/register', async (req, res) => {
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        error: 'An account with this email address already exists. Please sign in instead.'
+        code: 'EMAIL_ALREADY_EXISTS',
+        error: 'An account with this email already exists. Please log in instead.'
       });
     }
 
@@ -123,7 +124,11 @@ router.post('/login', async (req, res) => {
     });
 
     if (!user) {
-      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+      return res.status(404).json({
+        success: false,
+        code: 'EMAIL_NOT_FOUND',
+        error: 'This email is not registered yet. Please sign up first.'
+      });
     }
 
     let isMatch = await bcrypt.compare(password, user.password);
@@ -134,7 +139,8 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid email or password. If you forgot your password or created this account with Google, use "Forgot password?" below to reset it.'
+        code: 'INVALID_PASSWORD',
+        error: 'Incorrect password. Please try again or use "Forgot password?" below to reset it.'
       });
     }
 
