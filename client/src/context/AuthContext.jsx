@@ -170,6 +170,16 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const checkEmail = async (emailToCheck) => {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/auth/check-email?email=${encodeURIComponent(emailToCheck)}`);
+      const data = await res.json();
+      return data;
+    } catch {
+      return { exists: false };
+    }
+  };
+
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
@@ -197,6 +207,7 @@ export function AuthProvider({ children }) {
         demoLogin,
         googleLogin,
         resetPassword,
+        checkEmail,
         logout,
         updateUser
       }}

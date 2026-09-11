@@ -31,6 +31,28 @@ const sanitizeUser = (user) => {
 };
 
 /**
+ * GET /api/auth/check-email
+ * Quick check if an email already exists in the database
+ */
+router.get('/check-email', async (req, res) => {
+  try {
+    const email = (req.query.email || '').trim().toLowerCase();
+    if (!email) {
+      return res.json({ exists: false });
+    }
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+    res.json({
+      exists: !!user,
+      role: user ? user.role : null
+    });
+  } catch (err) {
+    res.status(500).json({ exists: false, error: err.message });
+  }
+});
+
+/**
  * POST /api/auth/register
  * Register a new Teacher or Student account
  */
@@ -66,7 +88,7 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({
         success: false,
         code: 'EMAIL_ALREADY_EXISTS',
-        error: 'An account with this email already exists. Please log in instead.'
+        error: 'This email ID is registered. Please login.'
       });
     }
 

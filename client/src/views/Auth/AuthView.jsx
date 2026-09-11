@@ -52,7 +52,7 @@ const getSavedCredentials = (targetRole = null) => {
 };
 
 export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack = null }) {
-  const { login, register, demoLogin, googleLogin, resetPassword } = useAuth();
+  const { login, register, demoLogin, googleLogin, resetPassword, checkEmail } = useAuth();
 
   // Load remembered credentials if any
   const savedCreds = getSavedCredentials(initialRoomCode ? 'STUDENT' : null);
@@ -150,6 +150,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [error, setError] = useState('');
   const [errorCode, setErrorCode] = useState('');
+  const [emailAlreadyRegistered, setEmailAlreadyRegistered] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
@@ -162,6 +163,29 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isPasswordValid = password.length >= 4;
   const isNameValid = name.trim().length >= 2;
+
+  // Real-time check when typing email in register mode
+  useEffect(() => {
+    if (mode !== 'register' || !isEmailValid) {
+      setEmailAlreadyRegistered(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await checkEmail(email.trim());
+        if (res && res.exists) {
+          setEmailAlreadyRegistered(true);
+        } else {
+          setEmailAlreadyRegistered(false);
+        }
+      } catch {
+        setEmailAlreadyRegistered(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [email, mode, isEmailValid]);
 
   const triggerCardShake = () => {
     setIsShaking(true);
@@ -186,6 +210,13 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
     setEmailTouched(true);
     setPasswordTouched(true);
     if (mode === 'register') setNameTouched(true);
+
+    if (mode === 'register' && emailAlreadyRegistered) {
+      setError('This email ID is registered. Please login.');
+      setErrorCode('EMAIL_ALREADY_EXISTS');
+      triggerCardShake();
+      return;
+    }
 
     if (!currentEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentEmail) || currentPassword.length < 4 || (mode === 'register' && currentName.length < 2)) {
       setError('Please fix the highlighted fields with valid information.');
@@ -651,7 +682,9 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
             <div className="space-y-1">
               <div
                 className={`floating-label-wrap ${email.length > 0 || emailFocused ? 'is-filled' : ''} rounded-xl bg-slate-950/70 border transition-all duration-250 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                  emailTouched
+                  mode === 'register' && emailAlreadyRegistered
+                    ? 'border-rose-500/80 shadow-md shadow-rose-500/15 ring-2 ring-rose-500/20'
+                    : emailTouched
                     ? isEmailValid
                       ? 'border-emerald-500/80 shadow-md shadow-emerald-500/15'
                       : 'border-rose-500/80 shadow-md shadow-rose-500/15'
@@ -683,9 +716,11 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                 </span>
 
                 {/* Real-time validation status icon */}
-                {emailTouched && (
+                {(emailTouched || (mode === 'register' && emailAlreadyRegistered)) && (
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                    {isEmailValid ? (
+                    {mode === 'register' && emailAlreadyRegistered ? (
+                      <AlertCircle className="w-4 h-4 text-rose-400 animate-scale-pop" />
+                    ) : isEmailValid ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 animate-scale-pop" />
                     ) : (
                       <AlertCircle className="w-4 h-4 text-rose-400 animate-scale-pop" />
@@ -693,6 +728,35 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                   </div>
                 )}
               </div>
+
+              {/* Inline duplicate warning with immediate Go to Login action */}
+              {mode === 'register' && emailAlreadyRegistered && (
+                <div className="p-2 px-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center justify-between animate-fade-scale shadow-sm">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                    <span>This email ID is registered, please login.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login');
+                      setError('');
+                      setErrorCode('');
+                      setEmailAlreadyRegistered(false);
+                      const roleCreds = getSavedCredentials(role);
+                      if (roleCreds && roleCreds.email === email) {
+                        setPassword(roleCreds.password || '');
+                      } else {
+                        setPassword('');
+                      }
+                      setPasswordTouched(false);
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-[11px] shadow-sm transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 ml-2"
+                  >
+                    Go to Login
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Password Field with Floating Label, Real-Time Validation & Eye Toggle */}
@@ -796,7 +860,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                 </div>
 
                 {/* Sign Up Flow: If email already exists -> provide "Go to Login" button */}
-                {(errorCode === 'EMAIL_ALREADY_EXISTS' || error.includes('already exists') || error.includes('log in instead')) && (
+                {(errorCode === 'EMAIL_ALREADY_EXISTS' || error.toLowerCase().includes('registered') || error.toLowerCase().includes('already exists') || error.toLowerCase().includes('log in') || error.toLowerCase().includes('login')) && (
                   <div className="pl-6 pt-0.5">
                     <button
                       type="button"
@@ -804,6 +868,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                         setMode('login');
                         setError('');
                         setErrorCode('');
+                        setEmailAlreadyRegistered(false);
                         const targetEmail = emailInputRef.current?.value || email;
                         const roleCreds = getSavedCredentials(role);
                         if (roleCreds && roleCreds.email === targetEmail) {
