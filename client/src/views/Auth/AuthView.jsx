@@ -30,22 +30,65 @@ import AIEducationBackground from '../../components/AIEducationBackground';
 import soundManager from '../../utils/sound';
 import GoogleSignInModal from './GoogleSignInModal';
 
+// Helper to retrieve remembered credentials from localStorage
+const getSavedCredentials = (targetRole = null) => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    if (targetRole) {
+      const roleSaved = localStorage.getItem(`quiz_remember_${targetRole}`);
+      if (roleSaved) return JSON.parse(roleSaved);
+    }
+    const saved = localStorage.getItem('quiz_remember_me');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (!targetRole || parsed.role === targetRole) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading saved credentials:', e);
+  }
+  return null;
+};
+
 export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack = null }) {
   const { login, register, demoLogin, googleLogin } = useAuth();
 
+  // Load remembered credentials if any
+  const savedCreds = getSavedCredentials(initialRoomCode ? 'STUDENT' : null);
+
   // Role: 'TEACHER' or 'STUDENT'
-  const [role, setRole] = useState('STUDENT');
+  const [role, setRole] = useState(initialRoomCode ? 'STUDENT' : (savedCreds?.role || 'STUDENT'));
   // Mode: 'login' or 'register'
   const [mode, setMode] = useState('login');
 
   // Form fields
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(savedCreds?.email || '');
+  const [password, setPassword] = useState(savedCreds?.password || '');
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('General');
   const [avatar, setAvatar] = useState(getRandomAvatar());
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(savedCreds ? true : true);
+
+  const handleRoleChange = (newRole) => {
+    setRole(newRole);
+    setError('');
+    if (mode === 'login') {
+      const roleCreds = getSavedCredentials(newRole);
+      if (roleCreds) {
+        setEmail(roleCreds.email || '');
+        setPassword(roleCreds.password || '');
+        setRememberMe(true);
+      } else {
+        setEmail('');
+        setPassword('');
+        setRememberMe(true);
+      }
+      setEmailTouched(false);
+      setPasswordTouched(false);
+    }
+  };
 
   // Field focus states for floating labels
   const [emailFocused, setEmailFocused] = useState(false);
@@ -146,6 +189,22 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
       let loggedUser;
       if (mode === 'login') {
         loggedUser = await login({ email: email.trim(), password, role });
+        if (rememberMe) {
+          try {
+            const creds = { email: email.trim(), password, role, savedAt: Date.now() };
+            localStorage.setItem('quiz_remember_me', JSON.stringify(creds));
+            localStorage.setItem(`quiz_remember_${role}`, JSON.stringify(creds));
+          } catch (storageErr) {
+            console.warn('Failed to save credentials to localStorage:', storageErr);
+          }
+        } else {
+          try {
+            localStorage.removeItem('quiz_remember_me');
+            localStorage.removeItem(`quiz_remember_${role}`);
+          } catch (storageErr) {
+            console.warn('Failed to remove credentials from localStorage:', storageErr);
+          }
+        }
       } else {
         loggedUser = await register({
           name: name.trim(),
@@ -410,10 +469,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
               {/* Student Tab */}
               <button
                 type="button"
-                onClick={() => {
-                  setRole('STUDENT');
-                  setError('');
-                }}
+                onClick={() => handleRoleChange('STUDENT')}
                 className={`relative z-10 w-1/2 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-heading font-bold text-xs sm:text-sm transition-colors duration-200 cursor-pointer ${
                   !isTeacher ? 'text-white' : 'text-slate-400 hover:text-slate-200'
                 }`}
@@ -425,10 +481,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
               {/* Teacher Tab */}
               <button
                 type="button"
-                onClick={() => {
-                  setRole('TEACHER');
-                  setError('');
-                }}
+                onClick={() => handleRoleChange('TEACHER')}
                 className={`relative z-10 w-1/2 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-heading font-bold text-xs sm:text-sm transition-colors duration-200 cursor-pointer ${
                   isTeacher ? 'text-white' : 'text-slate-400 hover:text-slate-200'
                 }`}
@@ -797,6 +850,12 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
                   onClick={() => {
                     setMode('login');
                     setError('');
+                    const roleCreds = getSavedCredentials(role);
+                    if (roleCreds) {
+                      setEmail(roleCreds.email || '');
+                      setPassword(roleCreds.password || '');
+                      setRememberMe(true);
+                    }
                   }}
                   className="font-bold text-purple-400 hover:text-purple-300 link-animated-underline cursor-pointer ml-1"
                 >
