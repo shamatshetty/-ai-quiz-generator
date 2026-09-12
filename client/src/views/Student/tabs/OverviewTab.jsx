@@ -60,11 +60,58 @@ export default function OverviewTab({
   const currentStreak = currentUserRank?.streak || (history.length > 0 ? history[0].streak || 3 : 1);
 
   const recentQuizzes = history.slice(0, 3);
-  const activeLiveQuiz = notifications.find((n) => Boolean(n.isLive));
+
+  // Real-time second-by-second ticker to track quiz time expiration
+  const [now, setNow] = React.useState(Date.now());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Compute active live quiz: disappears automatically once the time of the quiz finishes
+  const activeLiveQuiz = React.useMemo(() => {
+    return notifications.find((n) => {
+      if (!n.isLive) return false;
+      const createdAtMs = new Date(n.createdAt).getTime();
+      if (!createdAtMs || isNaN(createdAtMs)) return false;
+
+      const totalQuestions = Math.max(1, Number(n.totalQuestions) || 5);
+      const timeLimitSec = Math.max(5, Number(n.timeLimit) || 20);
+      // Total duration: questions duration + 45s lobby buffer
+      const totalDurationMs = (totalQuestions * timeLimitSec * 1000) + (45 * 1000);
+      const elapsedMs = now - createdAtMs;
+
+      // Once the time of the quiz finishes, it should NOT display on the dashboard!
+      if (elapsedMs >= totalDurationMs) {
+        return false;
+      }
+      return true;
+    });
+  }, [notifications, now]);
+
+  // Remaining countdown seconds
+  const remainingSeconds = React.useMemo(() => {
+    if (!activeLiveQuiz) return 0;
+    const createdAtMs = new Date(activeLiveQuiz.createdAt).getTime();
+    const totalQuestions = Math.max(1, Number(activeLiveQuiz.totalQuestions) || 5);
+    const timeLimitSec = Math.max(5, Number(activeLiveQuiz.timeLimit) || 20);
+    const totalDurationMs = (totalQuestions * timeLimitSec * 1000) + (45 * 1000);
+    const remainingMs = totalDurationMs - (now - createdAtMs);
+    return Math.max(0, Math.floor(remainingMs / 1000));
+  }, [activeLiveQuiz, now]);
+
+  const formatTimer = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   return (
     <div className="space-y-6 animate-tab-enter text-white">
-      {/* 0. Real-time Live Quiz Active Alert Banner */}
+      {/* 0. Real-time Live Quiz Active Alert Banner (auto-hides once quiz time finishes) */}
       {activeLiveQuiz && (
         <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-orange-500/20 border-2 border-amber-400/80 backdrop-blur-xl shadow-2xl shadow-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-bounce-subtle">
           <div className="flex items-center gap-3.5">
@@ -81,6 +128,10 @@ export default function OverviewTab({
                 </span>
                 <span className="text-xs text-amber-300/80 font-mono font-bold">
                   PIN: {activeLiveQuiz.roomCode}
+                </span>
+                <span className="text-xs text-amber-200 font-mono font-bold bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-amber-300" />
+                  <span>{formatTimer(remainingSeconds)} left</span>
                 </span>
               </div>
               <h3 className="text-base sm:text-lg font-heading font-black text-white mt-1">

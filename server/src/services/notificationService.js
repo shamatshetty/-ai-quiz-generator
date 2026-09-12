@@ -221,15 +221,32 @@ class NotificationService {
   }
 
   /**
-   * Retrieve notifications for student portal with live verification against active roomManager
+   * Retrieve notifications for student portal with live verification against active roomManager and time expiration
    */
   async getNotifications({ roomManager = null } = {}) {
     await this.ensureTable();
 
-    const isRoomActive = (code, dbIsLive) => {
-      if (!roomManager || !code) return Boolean(dbIsLive);
-      const activeRoom = roomManager.getRoom(code);
-      return Boolean(activeRoom && activeRoom.status !== 'PODIUM' && activeRoom.status !== 'ENDED');
+    const isRoomActive = (code, dbIsLive, createdAt, totalQuestions, timeLimit) => {
+      if (!code) return false;
+      if (!dbIsLive) return false;
+
+      // Auto-expire if total time of the quiz has elapsed
+      if (createdAt) {
+        const totalQ = Math.max(1, Number(totalQuestions) || 5);
+        const timerSec = Math.max(5, Number(timeLimit) || 20);
+        // Total duration: questions duration + 60s lobby buffer
+        const maxDurationMs = (totalQ * timerSec * 1000) + (60 * 1000);
+        const elapsed = Date.now() - new Date(createdAt).getTime();
+        if (elapsed >= maxDurationMs) {
+          return false;
+        }
+      }
+
+      if (roomManager) {
+        const activeRoom = roomManager.getRoom(code);
+        return Boolean(activeRoom && activeRoom.status !== 'PODIUM' && activeRoom.status !== 'ENDED');
+      }
+      return Boolean(dbIsLive);
     };
 
     let list = [];
@@ -243,11 +260,14 @@ class NotificationService {
       `);
 
       if (rows && rows.length > 0) {
-        list = rows.map(r => ({
-          ...r,
-          isLive: isRoomActive(r.roomCode, r.isLive),
-          createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString()
-        }));
+        list = rows.map(r => {
+          const active = isRoomActive(r.roomCode, r.isLive, r.createdAt, r.totalQuestions, r.timeLimit);
+          return {
+            ...r,
+            isLive: active,
+            createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString()
+          };
+        });
       }
     } catch (dbErr) {
       console.warn('Could not read from Postgres StudentNotification, falling back to memory:', dbErr.message);
@@ -258,7 +278,7 @@ class NotificationService {
     if (list.length === 0) {
       list = notificationManager.getNotifications().map(n => ({
         ...n,
-        isLive: isRoomActive(n.roomCode, n.isLive)
+        isLive: isRoomActive(n.roomCode, n.isLive, n.createdAt, n.totalQuestions, n.timeLimit)
       }));
     }
 
