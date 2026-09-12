@@ -176,6 +176,13 @@ export default function OnlineQuizTab({
       const headers = { 'Content-Type': 'application/json' };
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
+      // Retrieve or create persistent student session ID
+      let clientSessionId = localStorage.getItem('quiz_student_session_id');
+      if (!clientSessionId) {
+        clientSessionId = 'sess-' + Math.random().toString(36).substring(2, 11) + '-' + Date.now();
+        localStorage.setItem('quiz_student_session_id', clientSessionId);
+      }
+
       const res = await fetch(`${serverUrl}/api/quizzes/generate-ai`, {
         method: 'POST',
         headers,
@@ -185,7 +192,8 @@ export default function OnlineQuizTab({
           numQuestions: Number(numQuestions) || 5,
           questionType,
           timeLimit: isTimed ? 20 : 0,
-          userId: user?.id || null
+          userId: user?.id || null,
+          sessionId: clientSessionId
         })
       });
 
@@ -814,13 +822,26 @@ export default function OnlineQuizTab({
               type="button"
               onClick={() => {
                 if (redirectTimerRef.current) clearInterval(redirectTimerRef.current);
+                handleStartQuiz();
+              }}
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-slate-950 font-heading font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer hover:scale-105 active:scale-95"
+              title="Generate a completely new set of questions on the same subject"
+            >
+              <Sparkles className="w-4 h-4 text-slate-950" />
+              <span>Retake Same Topic (New Questions)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (redirectTimerRef.current) clearInterval(redirectTimerRef.current);
                 setPhase('setup');
                 setSubject('');
               }}
               className="px-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-purple-500/50 text-slate-200 hover:text-white font-heading font-black text-sm flex items-center gap-2 shadow-lg transition-all cursor-pointer hover:scale-105 active:scale-95"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>Take Another Quiz</span>
+              <span>Choose Another Topic</span>
             </button>
           </div>
         </div>

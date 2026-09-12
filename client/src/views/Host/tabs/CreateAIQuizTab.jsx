@@ -131,6 +131,12 @@ export default function CreateAIQuizTab({
       const headers = { 'Content-Type': 'application/json' };
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
+      let clientSessionId = localStorage.getItem('quiz_client_session_id');
+      if (!clientSessionId) {
+        clientSessionId = 'host-sess-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now();
+        localStorage.setItem('quiz_client_session_id', clientSessionId);
+      }
+
       const res = await fetch(`${serverUrl}/api/quizzes/generate-ai`, {
         method: 'POST',
         headers,
@@ -140,7 +146,8 @@ export default function CreateAIQuizTab({
           numQuestions: Number(numQuestions) || 5,
           questionType,
           timeLimit: Number(timeLimit) || 20,
-          userId: user?.id || null
+          userId: user?.id || null,
+          sessionId: clientSessionId
         })
       });
       const data = await res.json();
@@ -168,6 +175,8 @@ export default function CreateAIQuizTab({
       const headers = { 'Content-Type': 'application/json' };
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
+      const clientSessionId = localStorage.getItem('quiz_client_session_id') || 'host-sess';
+
       const res = await fetch(`${serverUrl}/api/quizzes/regenerate-question`, {
         method: 'POST',
         headers,
@@ -177,7 +186,8 @@ export default function CreateAIQuizTab({
           questionType,
           timeLimit,
           currentIndex: idx,
-          userId: user?.id || null
+          userId: user?.id || null,
+          sessionId: clientSessionId
         })
       });
       const data = await res.json();
