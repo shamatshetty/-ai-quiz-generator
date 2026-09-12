@@ -204,7 +204,8 @@ router.get('/history', async (req, res) => {
 
 /**
  * GET /api/student/leaderboard
- * Fetch class/global leaderboard with student rankings, highlighting the requesting student
+ * Fetch class leaderboard with registered students who took quizzes.
+ * Strictly includes only registered students with completed quizzes - no random names.
  */
 router.get('/leaderboard', async (req, res) => {
   try {
@@ -212,14 +213,12 @@ router.get('/leaderboard', async (req, res) => {
     const queryUserId = req.query.userId;
     const targetUserId = authUser?.id || queryUserId || null;
 
-    // Fetch all student users from DB
+    // Fetch all registered student users from DB along with their player sessions and answers
     const studentUsers = await prisma.user.findMany({
       where: { role: 'STUDENT' },
       include: {
         playerSessions: {
-          select: {
-            score: true,
-            streak: true,
+          include: {
             answers: {
               select: { isCorrect: true }
             }
@@ -228,81 +227,82 @@ router.get('/leaderboard', async (req, res) => {
       }
     });
 
-    // Default class peers to create a realistic, competitive cohort if DB has few students
-    const peerCohort = [
-      { id: 'peer-1', name: 'Sophia Chen', avatar: '🌟', score: 1850, quizzesPlayed: 14, accuracy: 94, streak: 7 },
-      { id: 'peer-2', name: 'Marcus Vance', avatar: '⚡', score: 1620, quizzesPlayed: 12, accuracy: 89, streak: 5 },
-      { id: 'peer-3', name: 'Elena Rostova', avatar: '🎯', score: 1480, quizzesPlayed: 11, accuracy: 86, streak: 4 },
-      { id: 'peer-4', name: 'Liam Gallagher', avatar: '🦊', score: 1310, quizzesPlayed: 10, accuracy: 82, streak: 3 },
-      { id: 'peer-5', name: 'Aaliyah Khan', avatar: '🚀', score: 1190, quizzesPlayed: 9, accuracy: 80, streak: 3 },
-      { id: 'peer-6', name: 'Noah Patel', avatar: '🧠', score: 980, quizzesPlayed: 8, accuracy: 76, streak: 2 },
-      { id: 'peer-7', name: 'Chloe Dubois', avatar: '🎨', score: 850, quizzesPlayed: 7, accuracy: 74, streak: 1 },
-      { id: 'peer-8', name: 'Lucas Silva', avatar: '🏆', score: 720, quizzesPlayed: 6, accuracy: 71, streak: 1 },
-    ];
+    const leaderboardList = [];
 
-    const studentMap = new Map();
-
-    // Map existing DB students
+    // Include ONLY registered students who have actually taken quizzes (sessions.length > 0)
     studentUsers.forEach((stu) => {
+      const sessions = stu.playerSessions || [];
+      if (sessions.length === 0) return; // Must have taken quizzes
+
       let totalScore = 0;
-      let highestStreak = 1;
+      let highestStreak = 0;
       let totalAns = 0;
       let correctAns = 0;
 
-      stu.playerSessions.forEach((ps) => {
-        totalScore += ps.score || 0;
-        if (ps.streak > highestStreak) highestStreak = ps.streak;
-        ps.answers.forEach((ans) => {
-          totalAns++;
-          if (ans.isCorrect) correctAns++;
-        });
+      sessions.forEach((ps) => {
+        totalScore += Number(ps.score) || 0;
+        if (ps.streak && ps.streak > highestStreak) {
+          highestStreak = ps.streak;
+        }
+        if (ps.answers && ps.answers.length > 0) {
+          ps.answers.forEach((ans) => {
+            totalAns++;
+            if (ans.isCorrect) correctAns++;
+          });
+        }
       });
 
-      const accuracy = totalAns > 0 ? Math.round((correctAns / totalAns) * 100) : 85;
+      const accuracy = totalAns > 0 ? Math.round((correctAns / totalAns) * 100) : 0;
 
-      studentMap.set(stu.id, {
+      leaderboardList.push({
         id: stu.id,
         name: stu.name,
         avatar: stu.avatar || '🎓',
-        score: Math.max(totalScore, stu.playerSessions.length * 120),
-        quizzesPlayed: stu.playerSessions.length,
+        score: totalScore,
+        quizzesPlayed: sessions.length,
         accuracy,
         streak: highestStreak,
         isCurrentUser: targetUserId === stu.id
       });
     });
 
-    // Populate peers if not in map
-    peerCohort.forEach((peer) => {
-      if (!studentMap.has(peer.id)) {
-        studentMap.set(peer.id, {
-          ...peer,
-          isCurrentUser: false
-        });
-      }
+    // Sort descending by score, then accuracy, then quizzes played
+    leaderboardList.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+      return b.quizzesPlayed - a.quizzesPlayed;
     });
 
-    // Sort descending by score
-    const sorted = Array.from(studentMap.values()).sort((a, b) => b.score - a.score);
-
-    // Assign rank
-    const leaderboard = sorted.map((item, idx) => ({
+    // Assign rank (1, 2, 3...)
+    const leaderboard = leaderboardList.map((item, idx) => ({
       ...item,
       rank: idx + 1
     }));
 
     // Find requesting student's entry
-    const currentUserEntry = leaderboard.find((item) => item.isCurrentUser) || (targetUserId ? {
-      id: targetUserId,
-      name: authUser?.name || 'You',
-      avatar: authUser?.avatar || '🚀',
-      score: 1250,
-      quizzesPlayed: 8,
-      accuracy: 88,
-      streak: 3,
-      rank: 4,
-      isCurrentUser: true
-    } : null);
+    let currentUserEntry = leaderboard.find((item) => item.isCurrentUser) || null;
+
+    // If requesting user is registered but hasn't taken any quiz yet, return real user details with 0 stats and unranked
+    if (!currentUserEntry && targetUserId) {
+      const targetUser = studentUsers.find((u) => u.id === targetUserId) || await prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: { id: true, name: true, avatar: true }
+      });
+
+      if (targetUser) {
+        currentUserEntry = {
+          id: targetUser.id,
+          name: targetUser.name || authUser?.name || 'You',
+          avatar: targetUser.avatar || authUser?.avatar || '🎓',
+          score: 0,
+          quizzesPlayed: 0,
+          accuracy: 0,
+          streak: 0,
+          rank: null,
+          isCurrentUser: true
+        };
+      }
+    }
 
     res.json({
       success: true,

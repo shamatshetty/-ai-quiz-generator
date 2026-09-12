@@ -299,31 +299,40 @@ export default function TeacherReportsTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80 text-xs sm:text-sm font-medium">
-              {classLeaderboard.slice(0, 10).map((student, idx) => {
-                const rank = idx + 1;
-                return (
-                  <tr key={student.userId || idx} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3.5 pl-2">
-                      {rank === 1 && <span className="font-bold text-amber-400 text-xs sm:text-sm badge-caps">🥇 #1</span>}
-                      {rank === 2 && <span className="font-bold text-slate-300 text-xs sm:text-sm badge-caps">🥈 #2</span>}
-                      {rank === 3 && <span className="font-bold text-amber-600 text-xs sm:text-sm badge-caps">🥉 #3</span>}
-                      {rank > 3 && <span className="font-semibold text-slate-500 font-mono text-xs sm:text-sm">#{rank}</span>}
-                    </td>
-                    <td className="py-3.5">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">{student.avatar || '🚀'}</span>
-                        <span className="font-bold text-white text-xs sm:text-sm">{student.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 text-slate-300 tabular-nums font-mono text-xs sm:text-sm">{student.quizzesPlayed || 12} quizzes</td>
-                    <td className="py-3.5 font-bold text-emerald-400 tabular-nums font-mono text-xs sm:text-sm">{student.accuracy || 85}%</td>
-                    <td className="py-3.5 font-semibold text-amber-400 tabular-nums font-mono text-xs sm:text-sm">🔥 {student.streak || 3}</td>
-                    <td className="py-3.5 text-right pr-2 font-bold text-purple-300 tabular-nums font-mono text-xs sm:text-sm">
-                      {student.score} pts
-                    </td>
-                  </tr>
-                );
-              })}
+              {classLeaderboard.length > 0 ? (
+                classLeaderboard.slice(0, 10).map((student, idx) => {
+                  const rank = idx + 1;
+                  return (
+                    <tr key={student.id || student.userId || idx} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3.5 pl-2">
+                        {rank === 1 && <span className="font-bold text-amber-400 text-xs sm:text-sm badge-caps">🥇 #1</span>}
+                        {rank === 2 && <span className="font-bold text-slate-300 text-xs sm:text-sm badge-caps">🥈 #2</span>}
+                        {rank === 3 && <span className="font-bold text-amber-600 text-xs sm:text-sm badge-caps">🥉 #3</span>}
+                        {rank > 3 && <span className="font-semibold text-slate-500 font-mono text-xs sm:text-sm">#{rank}</span>}
+                      </td>
+                      <td className="py-3.5">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{student.avatar || '🎓'}</span>
+                          <span className="font-bold text-white text-xs sm:text-sm">{student.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 text-slate-300 tabular-nums font-mono text-xs sm:text-sm">{student.quizzesPlayed ?? 0} quizzes</td>
+                      <td className="py-3.5 font-bold text-emerald-400 tabular-nums font-mono text-xs sm:text-sm">{student.accuracy ?? 0}%</td>
+                      <td className="py-3.5 font-semibold text-amber-400 tabular-nums font-mono text-xs sm:text-sm">🔥 {student.streak ?? 0}</td>
+                      <td className="py-3.5 text-right pr-2 font-bold text-purple-300 tabular-nums font-mono text-xs sm:text-sm">
+                        {student.score} pts
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="6" className="py-8 text-center text-slate-400">
+                    <p className="font-semibold text-sm">No registered student records found.</p>
+                    <p className="text-xs text-slate-500 mt-1">Once students complete quizzes, their standings will appear here.</p>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

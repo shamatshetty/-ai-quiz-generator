@@ -56,8 +56,8 @@ export default function OverviewTab({
 }) {
   const quizzesAttended = stats?.totalQuizzesAttended || history.length || 0;
   const overallAccuracy = stats?.overallAccuracy || (history.length > 0 ? Math.round(history.reduce((a, b) => a + b.accuracyPercentage, 0) / history.length) : 0);
-  const currentRank = currentUserRank?.rank ? `#${currentUserRank.rank}` : '#1';
-  const currentStreak = currentUserRank?.streak || (history.length > 0 ? history[0].streak || 3 : 1);
+  const currentRank = currentUserRank?.rank ? `#${currentUserRank.rank}` : '—';
+  const currentStreak = currentUserRank?.streak || (history.length > 0 ? history[0].streak || 0 : 0);
 
   const recentQuizzes = history.slice(0, 3);
 

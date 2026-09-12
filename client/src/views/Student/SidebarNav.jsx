@@ -52,8 +52,10 @@ export default function SidebarNav({
 
   const displayName = user?.name || 'Student';
   const displayAvatar = user?.avatar || '🚀';
-  const rankNumber = currentUserRank?.rank ? `#${currentUserRank.rank}` : '#1';
-  const rankTitle = currentUserRank?.rank <= 3 ? 'Top Scholar' : 'Active Learner';
+  const rankNumber = currentUserRank?.rank ? `#${currentUserRank.rank}` : '—';
+  const rankTitle = currentUserRank?.rank
+    ? (currentUserRank.rank <= 3 ? 'Top Scholar' : 'Active Learner')
+    : (currentUserRank?.quizzesPlayed > 0 ? 'Active Learner' : 'New Student');
 
   const sidebarContent = (
     <div className="flex flex-col h-full select-none text-white">
@@ -129,7 +131,7 @@ export default function SidebarNav({
             <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-xl shadow-sm relative">
               {displayAvatar}
               <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-purple-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-slate-900">
-                {currentUserRank?.rank || 1}
+                {currentUserRank?.rank || '—'}
               </span>
             </div>
           </div>
