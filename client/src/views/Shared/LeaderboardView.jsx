@@ -154,8 +154,9 @@ export default function LeaderboardView({
                   )}
                 </div>
 
-                <div className="font-heading font-black text-lg sm:text-2xl text-amber-400 min-w-[70px] sm:min-w-[90px]">
-                  {player.score.toLocaleString()}
+                <div className="font-heading font-black text-lg sm:text-2xl text-amber-400 min-w-[70px] sm:min-w-[90px] flex items-baseline gap-1 justify-end">
+                  <span>{player.score.toLocaleString()}</span>
+                  <span className="text-xs font-bold text-amber-300/80">{player.score === 1 ? 'mark' : 'marks'}</span>
                 </div>
               </div>
             </div>

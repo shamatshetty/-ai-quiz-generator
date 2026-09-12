@@ -236,7 +236,7 @@ export default function OnlineQuizTab({
     if (timerRef.current) clearInterval(timerRef.current);
 
     const isCorrect = optIdx === currentQuestion.correctOptionIndex;
-    const pointsAwarded = isCorrect ? 100 + streak * 20 : 0;
+    const pointsAwarded = isCorrect ? 1 : 0;
     const updatedScore = score + pointsAwarded;
 
     try {
@@ -700,7 +700,7 @@ export default function OnlineQuizTab({
             <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
               <span className="text-xs text-slate-400 font-semibold block">Total Score</span>
               <span className="font-heading font-black text-2xl text-amber-400 mt-1 block">
-                {score} pts
+                {score} {score === 1 ? 'mark' : 'marks'}
               </span>
             </div>
 

@@ -295,7 +295,7 @@ export default function TeacherReportsTab({
                 <th className="pb-3.5">Quizzes Attended</th>
                 <th className="pb-3.5">Accuracy</th>
                 <th className="pb-3.5">Active Streak</th>
-                <th className="pb-3.5 text-right pr-2">Total Score</th>
+                <th className="pb-3.5 text-right pr-2">Total Marks</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80 text-xs sm:text-sm font-medium">
@@ -320,7 +320,7 @@ export default function TeacherReportsTab({
                       <td className="py-3.5 font-bold text-emerald-400 tabular-nums font-mono text-xs sm:text-sm">{student.accuracy ?? 0}%</td>
                       <td className="py-3.5 font-semibold text-amber-400 tabular-nums font-mono text-xs sm:text-sm">🔥 {student.streak ?? 0}</td>
                       <td className="py-3.5 text-right pr-2 font-bold text-purple-300 tabular-nums font-mono text-xs sm:text-sm">
-                        {student.score} pts
+                        {student.score} {student.score === 1 ? 'mark' : 'marks'}
                       </td>
                     </tr>
                   );

@@ -186,7 +186,7 @@ export default function TeacherOverviewTab({
                   <div className="min-w-0 flex-1">
                     <h4 className="font-heading font-black text-white text-lg truncate">{top1.name}</h4>
                     <div className="flex items-center gap-2 text-sm text-slate-300 font-semibold mt-0.5 tabular-nums">
-                      <span className="text-amber-300 font-mono font-black">{top1.score} pts</span>
+                      <span className="text-amber-300 font-mono font-black">{top1.score} {top1.score === 1 ? 'mark' : 'marks'}</span>
                       <span>•</span>
                       <span className="text-emerald-400 font-mono">{top1.accuracy}% acc</span>
                     </div>
@@ -214,7 +214,7 @@ export default function TeacherOverviewTab({
                   <div className="min-w-0 flex-1">
                     <h4 className="font-heading font-black text-white text-lg truncate">{top2.name}</h4>
                     <div className="flex items-center gap-2 text-sm text-slate-300 font-semibold mt-0.5 tabular-nums">
-                      <span className="text-slate-200 font-mono font-black">{top2.score} pts</span>
+                      <span className="text-slate-200 font-mono font-black">{top2.score} {top2.score === 1 ? 'mark' : 'marks'}</span>
                       <span>•</span>
                       <span className="text-emerald-400 font-mono">{top2.accuracy}% acc</span>
                     </div>
@@ -246,7 +246,7 @@ export default function TeacherOverviewTab({
                   <div className="min-w-0 flex-1">
                     <h4 className="font-heading font-black text-white text-lg truncate">{top3.name}</h4>
                     <div className="flex items-center gap-2 text-sm text-slate-300 font-semibold mt-0.5 tabular-nums">
-                      <span className="text-amber-400 font-mono font-black">{top3.score} pts</span>
+                      <span className="text-amber-400 font-mono font-black">{top3.score} {top3.score === 1 ? 'mark' : 'marks'}</span>
                       <span>•</span>
                       <span className="text-emerald-400 font-mono">{top3.accuracy}% acc</span>
                     </div>

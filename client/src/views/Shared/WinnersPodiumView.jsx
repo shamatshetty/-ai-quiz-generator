@@ -225,7 +225,7 @@ export default function WinnersPodiumView({
                     {second.name}
                   </div>
                   <div className="text-xs sm:text-sm font-bold text-slate-400">
-                    {second.score} / {questions.length} pts
+                    {second.score} / {questions.length} marks
                   </div>
                 </div>
               ) : (
@@ -250,7 +250,7 @@ export default function WinnersPodiumView({
                     {first.name}
                   </div>
                   <div className="text-xs sm:text-base font-black text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30 inline-block">
-                    {first.score} / {questions.length} pts
+                    {first.score} / {questions.length} marks
                   </div>
                 </div>
               ) : (
@@ -274,7 +274,7 @@ export default function WinnersPodiumView({
                     {third.name}
                   </div>
                   <div className="text-xs sm:text-sm font-bold text-slate-400">
-                    {third.score} / {questions.length} pts
+                    {third.score} / {questions.length} marks
                   </div>
                 </div>
               ) : (
@@ -314,7 +314,7 @@ export default function WinnersPodiumView({
                     </div>
 
                     <div className="font-mono font-bold text-amber-400">
-                      {student.score} / {questions.length} pts
+                      {student.score} / {questions.length} marks
                     </div>
                   </div>
                 ))}

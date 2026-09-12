@@ -240,7 +240,6 @@ router.get('/leaderboard', async (req, res) => {
       let correctAns = 0;
 
       sessions.forEach((ps) => {
-        totalScore += Number(ps.score) || 0;
         if (ps.streak && ps.streak > highestStreak) {
           highestStreak = ps.streak;
         }
@@ -249,8 +248,15 @@ router.get('/leaderboard', async (req, res) => {
             totalAns++;
             if (ans.isCorrect) correctAns++;
           });
+        } else {
+          // If answers array is empty, session score represents the correct answers count (+1 mark each)
+          correctAns += Number(ps.score) || 0;
+          totalAns += Math.max(1, Number(ps.score) || 0);
         }
       });
+
+      // Strict +1 mark for each correct answer
+      totalScore = correctAns;
 
       const accuracy = totalAns > 0 ? Math.round((correctAns / totalAns) * 100) : 0;
 
@@ -429,6 +435,19 @@ router.post('/practice-session', async (req, res) => {
       }
     }
 
+    // Calculate total score strictly as +1 mark per correct answer
+    const correctAnswersCount = answers.filter((a) => Boolean(a.isCorrect)).length;
+    let maxConsecutiveStreak = 0;
+    let curStreak = 0;
+    answers.forEach((a) => {
+      if (a.isCorrect) {
+        curStreak++;
+        if (curStreak > maxConsecutiveStreak) maxConsecutiveStreak = curStreak;
+      } else {
+        curStreak = 0;
+      }
+    });
+
     const playerSession = await prisma.playerSession.create({
       data: {
         sessionToken: targetSessionToken,
@@ -436,8 +455,8 @@ router.post('/practice-session', async (req, res) => {
         name: playerName || 'Self-Paced Learner',
         avatar: playerAvatar || '🚀',
         quizSessionId: quizSession.id,
-        score: Number(score) || 0,
-        streak: Math.max(1, Math.min(5, Math.floor(score / 200))),
+        score: correctAnswersCount, // Strictly +1 mark per correct answer
+        streak: maxConsecutiveStreak,
         rank: 1
       }
     });
@@ -459,7 +478,7 @@ router.post('/practice-session', async (req, res) => {
             selectedOption: ans.selectedOption !== undefined ? ans.selectedOption : 0,
             isCorrect: Boolean(ans.isCorrect),
             timeTakenMs: Number(ans.timeTakenMs) || 1200,
-            pointsAwarded: Number(ans.pointsAwarded) || (ans.isCorrect ? 100 : 0)
+            pointsAwarded: ans.isCorrect ? 1 : 0
           }
         });
       }
