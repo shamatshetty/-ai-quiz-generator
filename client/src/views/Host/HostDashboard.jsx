@@ -94,7 +94,11 @@ export default function HostDashboard({
     if (!socket || creatingRoom) return;
     setCreatingRoom(true);
 
-    socket.emit('host:create-room', { quizId }, (res) => {
+    socket.emit('host:create-room', {
+      quizId,
+      hostName: user?.name || 'Teacher',
+      hostId: user?.id || null
+    }, (res) => {
       setCreatingRoom(false);
       if (res && res.success) {
         if (typeof onRoomCreated === 'function') {

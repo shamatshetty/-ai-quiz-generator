@@ -1,6 +1,7 @@
 import roomManager from './roomManager.js';
 import prisma from './prisma.js';
 import notificationManager from './notificationManager.js';
+import notificationService from './services/notificationService.js';
 
 /**
  * SCALE & RELIABILITY ARCHITECTURE NOTE:
@@ -194,6 +195,12 @@ export function setupSocketHandlers(io) {
   async function triggerQuizEnd(roomCode) {
     clearBotTimers(roomCode);
 
+    try {
+      await notificationService.markRoomEnded(roomCode);
+    } catch (e) {
+      console.warn('Could not mark notification room ended:', e.message);
+    }
+
     const podiumData = await roomManager.endQuiz(roomCode);
     if (podiumData) {
       io.to(`room:${roomCode}`).emit('quiz:end', podiumData);
@@ -307,31 +314,31 @@ export function setupSocketHandlers(io) {
         socket.join(`room:${room.roomCode}`);
         socket.join(`host:${room.roomCode}`);
 
+        const hostName = payload?.hostName || quizData?.author?.name || 'Teacher';
+        const hostId = payload?.hostId || quizData?.authorId || null;
+
+        // Feature: Broadcast Live Quiz Notification to all registered students (DB, Real-time Socket, Email)
+        let studentsNotifiedCount = 0;
+        try {
+          const notifResult = await notificationService.notifyLiveQuizHosted({
+            quiz: room.quiz,
+            roomCode: room.roomCode,
+            hostName,
+            hostId,
+            io
+          });
+          studentsNotifiedCount = notifResult?.studentsNotifiedCount || 0;
+        } catch (notifErr) {
+          console.error('Failed to notify registered students of live quiz:', notifErr);
+        }
+
         const response = {
           roomCode: room.roomCode,
           quizTitle: room.quiz.title,
           totalQuestions: room.quiz.questions.length,
-          players: roomManager.getPlayerList(room.roomCode)
+          players: roomManager.getPlayerList(room.roomCode),
+          studentsNotified: studentsNotifiedCount
         };
-
-        // Feature: Broadcast Live Quiz Notification to all connected student dashboards
-        try {
-          const liveNotif = notificationManager.addNotification({
-            type: 'LIVE_ROOM',
-            title: `Live Quiz Started: ${room.quiz.title}`,
-            message: `Teacher launched "${room.quiz.title}" (${room.quiz.questions.length} questions, ${room.quiz.defaultTimeLimit || 20}s timer). Room PIN: ${room.roomCode}`,
-            roomCode: room.roomCode,
-            quizTitle: room.quiz.title,
-            subject: room.quiz.subject || 'General',
-            timeLimit: room.quiz.defaultTimeLimit || 20,
-            totalQuestions: room.quiz.questions.length,
-            hostName: 'Teacher',
-            isLive: true
-          });
-          io.emit('classroom:notification', liveNotif);
-        } catch (notifErr) {
-          console.error('Failed to broadcast room notification:', notifErr);
-        }
 
         if (typeof callback === 'function') callback({ success: true, ...response });
         socket.emit('host:room-created', response);
@@ -350,6 +357,15 @@ export function setupSocketHandlers(io) {
       } catch (err) {
         console.error('Error in host:broadcast-quiz-notice:', err);
         if (typeof callback === 'function') callback({ success: false, error: err.message });
+      }
+    });
+
+    // STUDENT: Identify authenticated student socket
+    socket.on('student:identify', ({ userId, role, name, email }) => {
+      if (role === 'STUDENT' || userId) {
+        socket.join('students:registered');
+        if (userId) socket.join(`user:${userId}`);
+        console.log(`👤 Registered Student joined socket room: ${name || email || userId} (Socket: ${socket.id})`);
       }
     });
 

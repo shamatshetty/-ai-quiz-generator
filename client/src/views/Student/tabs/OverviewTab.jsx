@@ -60,9 +60,49 @@ export default function OverviewTab({
   const currentStreak = currentUserRank?.streak || (history.length > 0 ? history[0].streak || 3 : 1);
 
   const recentQuizzes = history.slice(0, 3);
+  const activeLiveQuiz = notifications.find((n) => n.isLive || n.type === 'LIVE_ROOM');
 
   return (
     <div className="space-y-6 animate-tab-enter text-white">
+      {/* 0. Real-time Live Quiz Active Alert Banner */}
+      {activeLiveQuiz && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-orange-500/20 border-2 border-amber-400/80 backdrop-blur-xl shadow-2xl shadow-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-bounce-subtle">
+          <div className="flex items-center gap-3.5">
+            <div className="relative flex shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-2xl bg-amber-400 opacity-75"></span>
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/30 border border-amber-400/60 flex items-center justify-center text-2xl relative shadow-md">
+                ⚡
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/30 text-amber-300 border border-amber-400/40 animate-badge-pulse">
+                  🔴 Live Classroom Quiz Active Now
+                </span>
+                <span className="text-xs text-amber-300/80 font-mono font-bold">
+                  PIN: {activeLiveQuiz.roomCode}
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-heading font-black text-white mt-1">
+                {activeLiveQuiz.quizTitle}
+              </h3>
+              <p className="text-xs text-slate-300">
+                Hosted by <strong>{activeLiveQuiz.hostName || 'Teacher'}</strong> in <em>{activeLiveQuiz.subject || 'General'}</em> ({activeLiveQuiz.totalQuestions || 'Multiple'} questions • {activeLiveQuiz.timeLimit || 20}s timer)
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onJoinFromNotification && onJoinFromNotification(activeLiveQuiz.roomCode)}
+            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-heading font-black text-sm shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 flex items-center gap-2 cursor-pointer hover:scale-105 active:scale-95 transition-all whitespace-nowrap shrink-0 self-stretch sm:self-auto justify-center"
+          >
+            <Zap className="w-4 h-4 fill-current" />
+            <span>Join Live Room (PIN {activeLiveQuiz.roomCode}) &rarr;</span>
+          </button>
+        </div>
+      )}
+
       {/* 1. Welcome Banner with Slowly Shifting Gradient & Waving Hand Loop */}
       <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-purple-900/80 via-indigo-900/80 to-purple-950/90 bg-[length:200%_200%] animate-gradient-flow border border-purple-500/30 text-white shadow-2xl relative overflow-hidden backdrop-blur-md">
         <div className="absolute -right-8 -bottom-8 w-48 h-48 rounded-full bg-purple-500/10 blur-2xl pointer-events-none" />

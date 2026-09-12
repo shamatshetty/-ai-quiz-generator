@@ -26,6 +26,7 @@ import AnswerReviewTab from './tabs/AnswerReviewTab';
 import LeaderboardTab from './tabs/LeaderboardTab';
 import SettingsTab from './tabs/SettingsTab';
 import educationBg from '../../assets/simple_education_bg.jpg';
+import soundManager from '../../utils/sound';
 
 function formatRelativeTime(isoString) {
   if (!isoString) return 'Just now';
@@ -76,21 +77,68 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
   useEffect(() => {
     if (!socket) return;
 
+    // Identify student socket to receive targeted classroom broadcasts
+    if (user) {
+      socket.emit('student:identify', {
+        userId: user.id,
+        role: user.role || 'STUDENT',
+        name: user.name,
+        email: user.email
+      });
+    }
+
+    // Request native browser desktop notification permission if not yet decided
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+
     const handleNewNotification = (notif) => {
+      // 1. Play alert chime
+      soundManager.playNotification();
+
+      // 2. Add to notifications state and trigger live toast
       setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
       setLiveToast(notif);
 
-      // Auto-dismiss live toast alert after 7 seconds
+      // 3. Desktop OS notification if window is minimized or user is on another tab
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          const isLive = notif.isLive || notif.type === 'LIVE_ROOM';
+          const title = isLive
+            ? `⚡ Live Quiz Started: ${notif.quizTitle}`
+            : notif.title || 'Classroom Notification';
+          const body = isLive
+            ? `Teacher ${notif.hostName || 'Teacher'} launched a live quiz (${notif.subject || 'General'})! PIN: ${notif.roomCode}`
+            : notif.message;
+
+          const native = new Notification(title, {
+            body,
+            icon: '/favicon.ico',
+            tag: notif.roomCode ? `live-room-${notif.roomCode}` : `notif-${notif.id}`
+          });
+          native.onclick = () => {
+            window.focus();
+            if (notif.roomCode) {
+              handleJoinFromNotification(notif.roomCode);
+            }
+          };
+        } catch (e) {}
+      }
+
+      // Auto-dismiss live toast alert after 10 seconds
       setTimeout(() => {
         setLiveToast((curr) => (curr?.id === notif.id ? null : curr));
-      }, 7000);
+      }, 10000);
     };
 
     socket.on('classroom:notification', handleNewNotification);
+    socket.on('student:quiz-hosted', handleNewNotification);
+
     return () => {
       socket.off('classroom:notification', handleNewNotification);
+      socket.off('student:quiz-hosted', handleNewNotification);
     };
-  }, [socket]);
+  }, [socket, user]);
 
   const fetchNotifications = async () => {
     try {

@@ -131,6 +131,20 @@ class SoundFX {
       });
     } catch (e) {}
   }
+
+  playNotification() {
+    if (this.muted) return;
+    try {
+      this.init();
+      if (!this.ctx) return;
+
+      // Crisp ascending classroom announcement chime: D5 (587.33Hz) -> A5 (880Hz)
+      this.playTone(587.33, 'sine', 0.2, 0.15);
+      setTimeout(() => {
+        this.playTone(880, 'triangle', 0.35, 0.18);
+      }, 140);
+    } catch (e) {}
+  }
 }
 
 const soundManager = new SoundFX();

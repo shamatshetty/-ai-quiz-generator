@@ -2,6 +2,8 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import prisma from '../prisma.js';
 import notificationManager from '../notificationManager.js';
+import notificationService from '../services/notificationService.js';
+import roomManager from '../roomManager.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'classroom-quiz-secret-key-2026';
@@ -315,11 +317,11 @@ router.get('/leaderboard', async (req, res) => {
 
 /**
  * GET /api/student/notifications
- * Fetch classroom notifications for student dashboard
+ * Fetch classroom notifications for student dashboard (PostgreSQL + active room status)
  */
-router.get('/notifications', (req, res) => {
+router.get('/notifications', async (req, res) => {
   try {
-    const notifications = notificationManager.getNotifications();
+    const notifications = await notificationService.getNotifications({ roomManager });
     res.json({ success: true, notifications });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -330,9 +332,9 @@ router.get('/notifications', (req, res) => {
  * POST /api/student/notifications/read-all
  * Mark all notifications as read
  */
-router.post('/notifications/read-all', (req, res) => {
+router.post('/notifications/read-all', async (req, res) => {
   try {
-    const notifications = notificationManager.markAllAsRead();
+    const notifications = await notificationService.markAllAsRead();
     res.json({ success: true, notifications });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -343,9 +345,9 @@ router.post('/notifications/read-all', (req, res) => {
  * POST /api/student/notifications/clear
  * Clear all notifications
  */
-router.post('/notifications/clear', (req, res) => {
+router.post('/notifications/clear', async (req, res) => {
   try {
-    const notifications = notificationManager.clearNotifications();
+    const notifications = await notificationService.clearNotifications();
     res.json({ success: true, notifications });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
