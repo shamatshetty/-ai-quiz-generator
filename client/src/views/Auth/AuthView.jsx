@@ -377,7 +377,7 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-wider shadow-inner animate-reveal-1">
               <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-sparkle" />
-              <span className="badge-caps">AI-Powered Classroom Arena</span>
+              <span className="badge-caps">Live Multiplayer & AI Assessment</span>
             </div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-heading text-white tracking-tight leading-tight animate-reveal-2">
               <span className="font-semibold text-slate-100">Master Any Subject with</span>{' '}
@@ -386,56 +386,56 @@ export default function AuthView({ onAuthSuccess, initialRoomCode = '', onBack =
               </span>
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-lg mx-auto lg:mx-0 animate-reveal-3">
-              The modern interactive assessment platform. Real-time quiz battles, instant leaderboards, and intelligent progress tracking.
+              The complete classroom quiz platform. Host live multiplayer game rooms with PIN codes, generate verified AI quizzes on any subject, and track student mastery.
             </p>
           </div>
 
           {/* 3 Staggered Feature Highlight Cards */}
           <div className="space-y-3.5 max-w-lg mx-auto lg:mx-0 pt-2 text-left">
-            {/* Feature 1: AI-Generated Quizzes */}
+            {/* Feature 1: AI-Powered Quiz Generator */}
             <div className="animate-feature-stagger-1 p-3.5 sm:p-4 rounded-2xl bg-slate-900/70 border border-slate-800/90 backdrop-blur-md flex items-center gap-4 hover:border-purple-500/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-950/40 transition-all duration-300 group cursor-default">
               <div className="w-12 h-12 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0 group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-200">
                 <BrainCircuit className="w-6 h-6 text-purple-400 animate-logo-pulse" />
               </div>
               <div>
                 <h4 className="font-heading font-bold text-white text-sm sm:text-base flex items-center gap-2">
-                  <span>AI-Generated Quizzes</span>
+                  <span>AI-Powered Quiz Generator</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-extrabold uppercase badge-caps animate-badge-pulse">Smart</span>
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Curriculum-aligned questions generated dynamically from text, syllabus, or lecture topics.
+                  Curriculum-aligned questions generated for any topic with two-pass accuracy checks, difficulty scaling, and zero repeats.
                 </p>
               </div>
             </div>
 
-            {/* Feature 2: Real-Time Leaderboard */}
+            {/* Feature 2: Live Multiplayer Battles */}
             <div className="animate-feature-stagger-2 p-3.5 sm:p-4 rounded-2xl bg-slate-900/70 border border-slate-800/90 backdrop-blur-md flex items-center gap-4 hover:border-amber-500/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-950/30 transition-all duration-300 group cursor-default">
               <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shrink-0 group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-200">
                 <Trophy className="w-6 h-6 text-amber-400 animate-icon-bounce" />
               </div>
               <div>
                 <h4 className="font-heading font-bold text-white text-sm sm:text-base flex items-center gap-2">
-                  <span>Real-Time Leaderboard</span>
+                  <span>Live Multiplayer Battles</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-extrabold uppercase badge-caps animate-badge-pulse">Live</span>
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Live leaderboard rankings updated after every answered question with podium celebrations.
+                  Join with a 6-digit room PIN, answer on the buzzer, build score streaks, and celebrate on the live podium.
                 </p>
               </div>
             </div>
 
-            {/* Feature 3: Track Your Progress */}
+            {/* Feature 3: Performance & PDF Reports */}
             <div className="animate-feature-stagger-3 p-3.5 sm:p-4 rounded-2xl bg-slate-900/70 border border-slate-800/90 backdrop-blur-md flex items-center gap-4 hover:border-emerald-500/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-950/30 transition-all duration-300 group cursor-default">
               <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0 group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-200">
                 <TrendingUp className="w-6 h-6 text-emerald-400 animate-icon-grow" />
               </div>
               <div>
                 <h4 className="font-heading font-bold text-white text-sm sm:text-base flex items-center gap-2">
-                  <span>Track Your Progress</span>
+                  <span>Performance & PDF Reports</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-extrabold uppercase badge-caps animate-badge-pulse">Analytics</span>
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Detailed score trends, accuracy percentages, time tracking, and answer reviews.
+                  Review step-by-step explanations, monitor student accuracy trends, and export printable performance report cards.
                 </p>
               </div>
             </div>
