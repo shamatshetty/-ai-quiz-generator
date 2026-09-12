@@ -134,42 +134,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const googleLogin = async ({ email, name, avatar, role, googleId, token: googleToken }) => {
-    try {
-      const res = await fetch(`${SERVER_URL}/api/auth/oauth/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, avatar, role, googleId, token: googleToken })
-      });
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Google sign-in failed');
-      }
-      saveAuthData(data.token, data.user);
-      return data.user;
-    } catch (err) {
-      throw err;
-    }
-  };
-
-  const microsoftLogin = async ({ email, name, avatar, role, microsoftId, accountId }) => {
-    try {
-      const res = await fetch(`${SERVER_URL}/api/auth/oauth/microsoft`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, avatar, role, microsoftId, accountId })
-      });
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Microsoft sign-in failed');
-      }
-      saveAuthData(data.token, data.user);
-      return data.user;
-    } catch (err) {
-      throw err;
-    }
-  };
-
   const requestPasswordReset = async (emailToReset) => {
     try {
       const res = await fetch(`${SERVER_URL}/api/auth/forgot-password`, {
@@ -239,16 +203,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const getGoogleDeviceAccounts = async () => {
-    try {
-      const res = await fetch(`${SERVER_URL}/api/auth/google/device-accounts`);
-      const data = await res.json();
-      return data.accounts || [];
-    } catch {
-      return [];
-    }
-  };
-
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
@@ -274,13 +228,10 @@ export function AuthProvider({ children }) {
         login,
         register,
         demoLogin,
-        googleLogin,
-        microsoftLogin,
         requestPasswordReset,
         verifyResetToken,
         confirmPasswordReset,
         checkEmail,
-        getGoogleDeviceAccounts,
         logout,
         updateUser
       }}
