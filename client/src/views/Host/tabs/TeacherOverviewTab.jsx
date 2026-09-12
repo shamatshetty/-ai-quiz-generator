@@ -14,7 +14,8 @@ import {
   Flame,
   Award,
   Crown,
-  PenTool
+  PenTool,
+  PlusCircle
 } from 'lucide-react';
 
 function AnimatedCounter({ value, duration = 1100, suffix = '', prefix = '' }) {
