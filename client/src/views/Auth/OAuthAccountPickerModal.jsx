@@ -1,32 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Mail,
-  User,
-  ArrowRight,
-  Shield,
+  AlertCircle,
+  ChevronDown,
+  ExternalLink,
   Laptop,
-  Check,
-  Sparkles,
-  AlertCircle
+  Check
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-
-// Official Google Letter Avatar Palette
-const GOOGLE_PALETTE = [
-  'bg-[#4285F4]', // Google Blue
-  'bg-[#EA4335]', // Google Red
-  'bg-[#FBBC05] text-slate-950', // Google Yellow
-  'bg-[#34A853]'  // Google Green
-];
-
-const getAvatarColor = (str = '') => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return GOOGLE_PALETTE[Math.abs(hash) % GOOGLE_PALETTE.length];
-};
 
 export default function OAuthAccountPickerModal({
   isOpen,
@@ -36,26 +17,25 @@ export default function OAuthAccountPickerModal({
 }) {
   const { googleLogin, getGoogleDeviceAccounts } = useAuth();
 
-  const [deviceAccounts, setDeviceAccounts] = useState([]);
   const [emailInput, setEmailInput] = useState('');
-  const [nameInput, setNameInput] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [deviceAccounts, setDeviceAccounts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeAccountEmail, setActiveAccountEmail] = useState(null);
   const [error, setError] = useState('');
 
-  // Discover and load Google accounts on this device
+  // Discover accounts on device
   useEffect(() => {
     if (!isOpen) return;
 
     setError('');
     setEmailInput('');
-    setNameInput('');
+    setIsFocused(false);
     let isMounted = true;
 
-    const loadAccounts = async () => {
+    const fetchAccounts = async () => {
       const accountMap = new Map();
 
-      // 1. Read locally cached device Google accounts
+      // Check localStorage
       try {
         const stored = localStorage.getItem('quiz_google_device_accounts');
         if (stored) {
@@ -63,12 +43,7 @@ export default function OAuthAccountPickerModal({
           if (Array.isArray(parsed)) {
             parsed.forEach((acc) => {
               if (acc.email) {
-                accountMap.set(acc.email.toLowerCase(), {
-                  name: acc.name || acc.email.split('@')[0],
-                  email: acc.email.toLowerCase(),
-                  avatar: acc.avatar || (currentRole === 'TEACHER' ? '👨‍🏫' : '🚀'),
-                  role: acc.role || currentRole
-                });
+                accountMap.set(acc.email.toLowerCase(), acc);
               }
             });
           }
@@ -77,28 +52,20 @@ export default function OAuthAccountPickerModal({
         console.warn('Local accounts read notice:', e);
       }
 
-      // 2. Fetch registered Google/Gmail accounts from server
+      // Check server
       try {
         if (typeof getGoogleDeviceAccounts === 'function') {
           const serverAccounts = await getGoogleDeviceAccounts();
           if (Array.isArray(serverAccounts)) {
             serverAccounts.forEach((acc) => {
               if (acc.email) {
-                const norm = acc.email.toLowerCase();
-                if (!accountMap.has(norm)) {
-                  accountMap.set(norm, {
-                    name: acc.name || norm.split('@')[0],
-                    email: norm,
-                    avatar: acc.avatar || (currentRole === 'TEACHER' ? '👨‍🏫' : '🚀'),
-                    role: acc.role || currentRole
-                  });
-                }
+                accountMap.set(acc.email.toLowerCase(), acc);
               }
             });
           }
         }
       } catch (e) {
-        console.warn('Server accounts notice:', e);
+        console.warn('Server accounts read notice:', e);
       }
 
       if (isMounted) {
@@ -106,50 +73,47 @@ export default function OAuthAccountPickerModal({
       }
     };
 
-    loadAccounts();
+    fetchAccounts();
 
     return () => {
       isMounted = false;
     };
-  }, [isOpen, currentRole]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // Execute sign in or auto-registration through Google email ID
-  const handleSignInWithGoogleEmail = async (targetEmail, targetName, targetAvatar) => {
-    const cleanEmail = (targetEmail || emailInput || '').trim().toLowerCase();
+  const handleGoogleSubmit = async (e) => {
+    e?.preventDefault();
+    const cleanEmail = emailInput.trim().toLowerCase();
 
     if (!cleanEmail) {
-      setError('Please enter your Google / Gmail address');
+      setError('Enter an email or phone number');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(cleanEmail)) {
-      setError('Please enter a valid email address (e.g. name@gmail.com)');
+      setError("Couldn't find your Google Account. Please enter a valid email.");
       return;
     }
 
     setError('');
     setLoading(true);
-    setActiveAccountEmail(cleanEmail);
 
     try {
-      const displayName = targetName || nameInput.trim() || cleanEmail.split('@')[0];
-      const userAvatar = targetAvatar || (currentRole === 'TEACHER' ? '👨‍🏫' : '🎓');
-
+      const displayName = cleanEmail.split('@')[0];
       const loggedUser = await googleLogin({
         email: cleanEmail,
         name: displayName,
-        avatar: userAvatar,
+        avatar: currentRole === 'TEACHER' ? '👨‍🏫' : '🚀',
         role: currentRole
       });
 
-      // Save to device Google accounts list for instant 1-click logins next time
+      // Save to device accounts
       const newEntry = {
         name: loggedUser.name || displayName,
         email: cleanEmail,
-        avatar: loggedUser.avatar || userAvatar,
+        avatar: loggedUser.avatar || (currentRole === 'TEACHER' ? '👨‍🏫' : '🚀'),
         role: loggedUser.role || currentRole,
         lastUsed: Date.now()
       };
@@ -165,223 +129,218 @@ export default function OAuthAccountPickerModal({
       }
       onClose();
     } catch (err) {
-      setError(err.message || 'Google sign-in failed. Please verify your email.');
+      setError(err.message || "Couldn't find your Google Account. Please try again.");
     } finally {
       setLoading(false);
-      setActiveAccountEmail(null);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-tab-enter">
-      <div className="relative w-full max-w-md bg-slate-900/95 border border-slate-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-blue-950/40 text-white overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-tab-enter font-sans select-none">
+      {/* Outer wrapper replicating the authentic Google Sign-in Window */}
+      <div className="relative w-full max-w-[450px] bg-white rounded-3xl p-8 sm:p-10 shadow-2xl border border-[#dadce0] text-[#202124] overflow-hidden">
         
-        {/* Subtle Ambient Glow */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
+        {/* Top Google animated progress bar when loading */}
+        {loading && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-[#e8f0fe] overflow-hidden">
+            <div className="h-full bg-[#1a73e8] animate-[pulse_1s_infinite_ease-in-out] w-full" />
+          </div>
+        )}
 
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer z-10"
+          className="absolute top-4 right-4 p-2 rounded-full text-[#5f6368] hover:text-[#202124] hover:bg-[#f1f3f4] transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Header */}
-        <div className="text-center space-y-3 mb-6">
-          {/* Official Google "G" Logo Pill */}
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-white shadow-lg flex items-center justify-center p-2.5">
-            <svg className="w-full h-full" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.97 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-              />
-            </svg>
-          </div>
-
-          <div>
-            <h2 className="text-xl font-heading font-black text-white tracking-tight">
-              Sign in with Google
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Continue to <strong className="text-purple-300">QuizPop Classroom</strong> as{' '}
-              <span className="text-emerald-400 font-bold uppercase">{currentRole}</span>
-            </p>
-          </div>
+        {/* 1. Official Google 4-Color Logo */}
+        <div className="mb-4">
+          <svg className="w-12 h-12" viewBox="0 0 24 24">
+            <path
+              fill="#4285F4"
+              d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.97 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+            />
+          </svg>
         </div>
 
-        {/* Error Notification */}
-        {error && (
-          <div className="mb-4 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2.5 animate-scale-in">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-            <p className="font-semibold leading-relaxed">{error}</p>
+        {/* 2. Heading & Subtitle */}
+        <div className="space-y-1 mb-7 text-left">
+          <h1 className="text-2xl sm:text-[28px] font-normal text-[#202124] tracking-tight">
+            Sign in
+          </h1>
+          <p className="text-sm sm:text-base text-[#202124] font-normal">
+            Use your Google Account
+          </p>
+        </div>
+
+        {/* Quick Accounts on Device (if available) */}
+        {deviceAccounts.length > 0 && (
+          <div className="mb-5 p-2.5 rounded-2xl bg-[#f8fafd] border border-[#dadce0] space-y-2">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[#5f6368] px-1 flex items-center gap-1.5">
+              <Laptop className="w-3.5 h-3.5 text-[#1a73e8]" />
+              <span>Accounts on this device</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {deviceAccounts.map((acc, idx) => (
+                <button
+                  key={`${acc.email}-${idx}`}
+                  type="button"
+                  onClick={() => setEmailInput(acc.email)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                    emailInput === acc.email
+                      ? 'bg-[#e8f0fe] text-[#1a73e8] border-[#1a73e8]'
+                      : 'bg-white text-[#3c4043] border-[#dadce0] hover:bg-[#f1f3f4]'
+                  }`}
+                >
+                  <span className="font-semibold">{acc.name || acc.email.split('@')[0]}</span>
+                  <span className="text-[#5f6368] text-[11px]">({acc.email})</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        <div className="space-y-4">
-          {/* Section 1: Detected Google Accounts on Device (if any) */}
-          {deviceAccounts.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Laptop className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Choose Google Account</span>
-                </span>
-                <span className="text-[10px] text-slate-500 font-medium">1-Click Sign In</span>
-              </div>
+        {/* 3. Form: Exact Google Material Outlined Text Field */}
+        <form onSubmit={handleGoogleSubmit} className="space-y-2">
+          <div className="relative pt-1">
+            <input
+              id="google-account-email-input"
+              type="text"
+              autoFocus
+              required
+              value={emailInput}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              onChange={(e) => {
+                setEmailInput(e.target.value);
+                setError('');
+              }}
+              placeholder=" "
+              className={`w-full px-4 py-3.5 text-base text-[#202124] bg-white rounded-[4px] outline-none transition-all duration-200 ${
+                error
+                  ? 'border-2 border-[#d93025]'
+                  : isFocused || emailInput
+                  ? 'border-2 border-[#1a73e8]'
+                  : 'border border-[#747775] hover:border-[#202124]'
+              }`}
+            />
+            {/* Google floating notched label */}
+            <label
+              htmlFor="google-account-email-input"
+              className={`absolute left-3 transition-all duration-150 pointer-events-none px-1 bg-white leading-none ${
+                isFocused || emailInput
+                  ? '-top-1 text-xs font-medium ' + (error ? 'text-[#d93025]' : 'text-[#1a73e8]')
+                  : 'top-4 text-base text-[#444746]'
+              }`}
+            >
+              Email or phone
+            </label>
+          </div>
 
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {deviceAccounts.map((account, index) => {
-                  const isAccountLoading = loading && activeAccountEmail === account.email;
-                  const firstChar = (account.name || account.email || 'G').charAt(0).toUpperCase();
-                  const avatarBg = getAvatarColor(account.email);
-
-                  return (
-                    <button
-                      key={`${account.email}-${index}`}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => handleSignInWithGoogleEmail(account.email, account.name, account.avatar)}
-                      className="w-full flex items-center justify-between p-3 rounded-2xl bg-slate-950/70 border border-slate-800 hover:border-blue-500/60 hover:bg-slate-800/90 transition-all duration-200 cursor-pointer group text-left shadow-sm disabled:opacity-50"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white shadow-inner shrink-0 group-hover:scale-105 transition-transform ${avatarBg}`}
-                        >
-                          {account.avatar && !account.avatar.startsWith('http') ? (
-                            <span className="text-xl">{account.avatar}</span>
-                          ) : account.avatar && account.avatar.startsWith('http') ? (
-                            <img
-                              src={account.avatar}
-                              alt={account.name}
-                              className="w-full h-full rounded-full object-cover"
-                            />
-                          ) : (
-                            <span>{firstChar}</span>
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-white truncate group-hover:text-blue-300 transition-colors">
-                            {account.name || account.email.split('@')[0]}
-                          </p>
-                          <p className="text-xs text-slate-400 truncate font-mono">
-                            {account.email}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="shrink-0 pl-2">
-                        {isAccountLoading ? (
-                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20 group-hover:bg-blue-500 group-hover:text-white transition-colors">
-                            <span>Sign In</span>
-                            <ArrowRight className="w-3 h-3" />
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="relative py-2 text-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-800" />
-                </div>
-                <span className="relative px-3 bg-slate-900 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  or enter email
-                </span>
-              </div>
+          {/* Error message */}
+          {error && (
+            <div className="flex items-start gap-1.5 pt-1 text-xs text-[#d93025] font-normal animate-scale-in">
+              <AlertCircle className="w-3.5 h-3.5 text-[#d93025] shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
-          {/* Section 2: Enter Google / Gmail Address Directly */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSignInWithGoogleEmail();
-            }}
-            className="space-y-3"
-          >
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Google / Gmail Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="email"
-                  required
-                  autoFocus={deviceAccounts.length === 0}
-                  value={emailInput}
-                  onChange={(e) => {
-                    setEmailInput(e.target.value);
-                    setError('');
-                  }}
-                  placeholder="name@gmail.com"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500 font-medium"
-                />
-              </div>
-            </div>
+          {/* Forgot email link */}
+          <div className="pt-1 text-left">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                // User can click Forgot password on login card
+              }}
+              className="text-sm font-medium text-[#1a73e8] hover:text-[#174ea6] transition-colors cursor-pointer"
+            >
+              Forgot email?
+            </button>
+          </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Full Name (Optional)
-              </label>
-              <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  placeholder="e.g. Shamat"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500 font-medium"
-                />
-              </div>
-            </div>
+          {/* Guest mode privacy notice */}
+          <div className="text-sm text-[#5f6368] leading-relaxed pt-7 text-left space-y-1">
+            <p>Not your computer? Use Guest mode to sign in privately.</p>
+            <p className="text-[#1a73e8] font-medium hover:underline cursor-pointer">
+              Learn more about using Guest mode
+            </p>
+          </div>
+
+          {/* Action buttons: Create account & Next */}
+          <div className="flex items-center justify-between pt-8">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm font-medium text-[#1a73e8] hover:bg-[#f8fafd] hover:text-[#174ea6] px-3 py-2 rounded-md transition-colors cursor-pointer"
+            >
+              Create account
+            </button>
 
             <button
               type="submit"
               disabled={loading || !emailInput.trim()}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 text-white font-heading font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer hover:scale-[1.01] active:scale-95 disabled:opacity-50 mt-1"
+              className="px-6 py-2.5 rounded-full bg-[#1a73e8] hover:bg-[#1b66c9] active:bg-[#174ea6] text-white text-sm font-medium transition-colors shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
-              {loading && !activeAccountEmail ? (
+              {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Signing in with Google...</span>
+                  <span>Checking...</span>
                 </>
               ) : (
-                <>
-                  <span>Sign In with Google</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
+                <span>Next</span>
               )}
             </button>
-          </form>
-        </div>
+          </div>
+        </form>
 
-        {/* Footer */}
-        <div className="mt-6 pt-4 border-t border-slate-800/80 text-center">
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            If your Google account is new, we'll automatically create your{' '}
-            <strong className="text-slate-300">{currentRole.toLowerCase()}</strong> profile.
-          </p>
+        {/* 4. Footer outside/inside: Language & Google Legal links */}
+        <div className="mt-8 pt-4 border-t border-[#f1f3f4] flex items-center justify-between text-xs text-[#5f6368]">
+          <div className="flex items-center gap-1 cursor-pointer hover:text-[#202124]">
+            <span>English (United States)</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </div>
+          <div className="flex items-center gap-4 text-xs font-normal">
+            <a
+              href="https://support.google.com/accounts"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-[#202124] transition-colors"
+            >
+              Help
+            </a>
+            <a
+              href="https://policies.google.com/privacy"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-[#202124] transition-colors"
+            >
+              Privacy
+            </a>
+            <a
+              href="https://policies.google.com/terms"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-[#202124] transition-colors"
+            >
+              Terms
+            </a>
+          </div>
         </div>
 
       </div>
