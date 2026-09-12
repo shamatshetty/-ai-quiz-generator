@@ -13,15 +13,18 @@ export default function LeaderboardTab({
 }) {
   const [searchFilter, setSearchFilter] = useState('');
 
-  // Top 3 Podium Students
-  const top3 = useMemo(() => leaderboard.slice(0, 3), [leaderboard]);
+  // Strictly cap public rankings to first 10 rank holders
+  const top10Leaderboard = useMemo(() => (leaderboard || []).slice(0, 10), [leaderboard]);
 
-  // Filtered Rankings List
+  // Top 3 Podium Students
+  const top3 = useMemo(() => top10Leaderboard.slice(0, 3), [top10Leaderboard]);
+
+  // Filtered Rankings List (within top 10)
   const filteredList = useMemo(() => {
-    if (!searchFilter.trim()) return leaderboard;
+    if (!searchFilter.trim()) return top10Leaderboard;
     const q = searchFilter.toLowerCase();
-    return leaderboard.filter((item) => item.name?.toLowerCase().includes(q));
-  }, [leaderboard, searchFilter]);
+    return top10Leaderboard.filter((item) => item.name?.toLowerCase().includes(q));
+  }, [top10Leaderboard, searchFilter]);
 
   return (
     <div className="space-y-6 animate-tab-enter text-white">
@@ -30,11 +33,11 @@ export default function LeaderboardTab({
         <div>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold uppercase tracking-wider mb-1 border border-amber-500/30">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Class Leaderboard Rankings</span>
+            <span>Top 10 Class Leaderboard</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-heading font-bold text-white">Class Leaderboard</h1>
+          <h1 className="text-xl sm:text-2xl font-heading font-bold text-white">Top 10 Class Leaderboard</h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            Real-time rankings based on quiz score achievements and accuracy.
+            Real-time rankings of the first 10 rank holders based on quiz marks and accuracy.
           </p>
         </div>
 
@@ -131,12 +134,15 @@ export default function LeaderboardTab({
       {/* 3. Search & Leaderboard Table */}
       <div className="dashboard-card overflow-hidden space-y-4 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h3 className="text-lg font-heading font-black text-white">Leaderboard Standings</h3>
+          <div>
+            <h3 className="text-lg font-heading font-black text-white">Top 10 Standings</h3>
+            <p className="text-xs text-slate-400">First 10 rank holders across all registered students</p>
+          </div>
           <div className="relative w-full sm:w-72">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
-              placeholder="Search peer name..."
+              placeholder="Search top 10..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-sm bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 text-white placeholder-slate-500"
@@ -253,6 +259,29 @@ export default function LeaderboardTab({
             </tbody>
           </table>
         </div>
+
+        {/* If requesting student is ranked beyond Top 10, display their dedicated standing card */}
+        {currentUserRank && currentUserRank.rank && currentUserRank.rank > 10 && (
+          <div className="mt-4 p-4 rounded-xl bg-purple-950/40 border border-purple-500/30 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-purple-600/80 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                #{currentUserRank.rank}
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>Your Current Rank: #{currentUserRank.rank}</span>
+                  <span className="text-purple-300">({currentUserRank.score} Marks • {currentUserRank.accuracy}%)</span>
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  Only the first 10 rank holders appear on the leaderboard. Keep scoring marks to break into the Top 10!
+                </div>
+              </div>
+            </div>
+            <div className="shrink-0 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30">
+              Rank #{currentUserRank.rank} of Class
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

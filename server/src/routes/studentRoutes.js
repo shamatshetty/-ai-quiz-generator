@@ -279,14 +279,14 @@ router.get('/leaderboard', async (req, res) => {
       return b.quizzesPlayed - a.quizzesPlayed;
     });
 
-    // Assign rank (1, 2, 3...)
-    const leaderboard = leaderboardList.map((item, idx) => ({
+    // Assign ranks (1, 2, 3...) to all registered students who took quizzes
+    const fullRankedLeaderboard = leaderboardList.map((item, idx) => ({
       ...item,
       rank: idx + 1
     }));
 
-    // Find requesting student's entry
-    let currentUserEntry = leaderboard.find((item) => item.isCurrentUser) || null;
+    // Find requesting student's entry across the entire ranked student cohort
+    let currentUserEntry = fullRankedLeaderboard.find((item) => item.isCurrentUser) || null;
 
     // If requesting user is registered but hasn't taken any quiz yet, return real user details with 0 stats and unranked
     if (!currentUserEntry && targetUserId) {
@@ -309,6 +309,9 @@ router.get('/leaderboard', async (req, res) => {
         };
       }
     }
+
+    // Strictly restrict the public leaderboard to only the first 10 rank holders
+    const leaderboard = fullRankedLeaderboard.slice(0, 10);
 
     res.json({
       success: true,
