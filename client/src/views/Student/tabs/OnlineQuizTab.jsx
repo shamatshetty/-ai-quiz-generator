@@ -172,15 +172,20 @@ export default function OnlineQuizTab({
     setPhase('loading');
 
     try {
+      const authToken = token || localStorage.getItem('quiz_auth_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
       const res = await fetch(`${serverUrl}/api/quizzes/generate-ai`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           subject: subject.trim(),
           difficulty,
           numQuestions: Number(numQuestions) || 5,
           questionType,
-          timeLimit: isTimed ? 20 : 0
+          timeLimit: isTimed ? 20 : 0,
+          userId: user?.id || null
         })
       });
 

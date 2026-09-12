@@ -127,15 +127,20 @@ export default function CreateAIQuizTab({
     setWittyIndex(0);
 
     try {
+      const authToken = localStorage.getItem('quiz_auth_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
       const res = await fetch(`${serverUrl}/api/quizzes/generate-ai`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           subject: subject.trim(),
           difficulty,
           numQuestions: Number(numQuestions) || 5,
           questionType,
-          timeLimit: Number(timeLimit) || 20
+          timeLimit: Number(timeLimit) || 20,
+          userId: user?.id || null
         })
       });
       const data = await res.json();
@@ -159,15 +164,20 @@ export default function CreateAIQuizTab({
     setRegeneratingIndex(idx);
 
     try {
+      const authToken = localStorage.getItem('quiz_auth_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
       const res = await fetch(`${serverUrl}/api/quizzes/regenerate-question`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           subject: subject.trim() || 'General Knowledge',
           difficulty,
           questionType,
           timeLimit,
-          currentIndex: idx
+          currentIndex: idx,
+          userId: user?.id || null
         })
       });
       const data = await res.json();

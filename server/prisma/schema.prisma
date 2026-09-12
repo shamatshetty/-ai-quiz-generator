@@ -123,3 +123,18 @@ model AuthAuditLog {
   @@index([email])
   @@index([event])
 }
+
+model AskedQuestionHistory {
+  id           String   @id @default(cuid())
+  userId       String?
+  sessionId    String?  // Anonymous or guest student session token
+  subject      String   // Normalized subject/topic name (lowercase)
+  questionText String
+  difficulty   String   @default("medium")
+  createdAt    DateTime @default(now())
+
+  @@index([userId, subject])
+  @@index([sessionId, subject])
+  @@index([createdAt])
+}
+

@@ -1,9 +1,25 @@
 import express from 'express';
 import os from 'os';
+import jwt from 'jsonwebtoken';
 import prisma from '../prisma.js';
 import roomManager from '../roomManager.js';
 import notificationManager from '../notificationManager.js';
 import aiQuizGenerator from '../aiQuizGenerator.js';
+import aiQuizService from '../services/aiQuizService.js';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'classroom-quiz-secret-key-2024';
+
+function extractUserFromReq(req) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, JWT_SECRET);
+      return decoded.userId || decoded.id || null;
+    }
+  } catch {}
+  return req.body?.userId || null;
+}
 
 const router = express.Router();
 
@@ -71,6 +87,34 @@ router.get('/quizzes', async (req, res) => {
     res.json({ success: true, quizzes });
   } catch (err) {
     console.error('Error fetching quizzes:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/quizzes/history - Retrieve asked question history for repetition audit
+ */
+router.get('/quizzes/history', async (req, res) => {
+  try {
+    const { subject, limit = 30 } = req.query;
+    const userId = extractUserFromReq(req);
+    const sessionId = req.query.sessionId || req.headers['x-session-id'] || null;
+
+    const history = await aiQuizService.getRecentAskedQuestions({
+      userId,
+      sessionId,
+      subject,
+      limit: Number(limit) || 30
+    });
+
+    res.json({
+      success: true,
+      subject: subject || 'All',
+      count: history.length,
+      history
+    });
+  } catch (err) {
+    console.error('Error fetching quiz question history:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -416,7 +460,7 @@ router.get('/rooms/:roomCode/export-csv', async (req, res) => {
 });
 
 /**
- * POST /api/quizzes/generate-ai - Generate AI-powered questions based on subject, difficulty, and question type
+ * POST /api/quizzes/generate-ai - Generate AI-powered questions with two-pass verification & history exclusion
  */
 router.post('/quizzes/generate-ai', async (req, res) => {
   try {
@@ -425,30 +469,81 @@ router.post('/quizzes/generate-ai', async (req, res) => {
       difficulty = 'medium',
       numQuestions = 5,
       questionType = 'mcq',
-      timeLimit = 20
+      timeLimit = 20,
+      sessionId,
+      adaptiveDifficulty = false
     } = req.body;
 
     if (!subject || !subject.trim()) {
       return res.status(400).json({ success: false, error: 'Subject or Topic is required' });
     }
 
-    const questions = await aiQuizGenerator.generateAIQuiz({
+    const userId = extractUserFromReq(req);
+    const resolvedSessionId = sessionId || req.headers['x-session-id'] || null;
+
+    const result = await aiQuizService.generateAIQuizEngine({
       subject: subject.trim(),
       difficulty,
       numQuestions: Number(numQuestions) || 5,
       questionType,
-      timeLimit: Number(timeLimit) || 20
+      timeLimit: Number(timeLimit) || 20,
+      userId,
+      sessionId: resolvedSessionId,
+      adaptiveDifficulty: Boolean(adaptiveDifficulty)
     });
 
     res.json({
       success: true,
-      subject: subject.trim(),
-      difficulty,
+      subject: result.subject,
+      difficulty: result.difficulty,
+      adaptiveApplied: result.adaptiveApplied,
       questionType,
-      questions
+      verificationSummary: result.verificationSummary,
+      questions: result.questions
     });
   } catch (err) {
     console.error('Error generating AI quiz:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/quizzes/verify-question - Standalone verification pass for any candidate question
+ */
+router.post('/quizzes/verify-question', async (req, res) => {
+  try {
+    const { question, options, correct_answer } = req.body;
+    if (!question || !options || !correct_answer) {
+      return res.status(400).json({
+        success: false,
+        error: 'question, options, and correct_answer are required'
+      });
+    }
+
+    const schemaCheck = aiQuizService.validateQuestionSchema({
+      question,
+      options,
+      correct_answer
+    });
+
+    if (!schemaCheck.valid) {
+      return res.status(400).json({
+        success: false,
+        error: `Schema error: ${schemaCheck.error}`
+      });
+    }
+
+    const verification = await aiQuizService.verifyQuestionCandidate(schemaCheck.data);
+
+    res.json({
+      success: true,
+      question,
+      options,
+      proposedAnswer: correct_answer,
+      verification
+    });
+  } catch (err) {
+    console.error('Error verifying question:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -463,15 +558,21 @@ router.post('/quizzes/regenerate-question', async (req, res) => {
       difficulty = 'medium',
       questionType = 'mcq',
       timeLimit = 20,
-      currentIndex = 0
+      currentIndex = 0,
+      sessionId
     } = req.body;
+
+    const userId = extractUserFromReq(req);
+    const resolvedSessionId = sessionId || req.headers['x-session-id'] || null;
 
     const question = await aiQuizGenerator.regenerateSingleQuestion({
       subject: (subject || 'General Knowledge').trim(),
       difficulty,
       questionType,
       timeLimit: Number(timeLimit) || 20,
-      currentIndex: Number(currentIndex) || 0
+      currentIndex: Number(currentIndex) || 0,
+      userId,
+      sessionId: resolvedSessionId
     });
 
     res.json({ success: true, question });

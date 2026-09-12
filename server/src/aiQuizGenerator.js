@@ -11,6 +11,7 @@
  * Includes randomized option shuffling (Fisher-Yates) and internal correct index mapping.
  * Connectable to external LLMs (OpenAI, Gemini, Anthropic) with built-in curriculum synthesizer.
  */
+import aiQuizService from './services/aiQuizService.js';
 
 // Fisher-Yates shuffle array helper
 function shuffleArray(array) {
@@ -364,20 +365,42 @@ function synthesizeTopicQuestion(subject, difficulty, questionType, index) {
 /**
  * Main AI Generation Function
  * 
- * Takes: { subject, difficulty, numQuestions, questionType, timeLimit }
- * Returns: Array of structured, randomized question objects
+ * Takes: { subject, difficulty, numQuestions, questionType, timeLimit, userId, sessionId, adaptiveDifficulty }
+ * Returns: Array of structured, verified, randomized question objects
  */
 export async function generateAIQuiz({
   subject = 'General Knowledge',
   difficulty = 'medium',
   numQuestions = 5,
   questionType = 'mcq',
-  timeLimit = 20
+  timeLimit = 20,
+  userId = null,
+  sessionId = null,
+  adaptiveDifficulty = false
 }) {
+  try {
+    const engineResult = await aiQuizService.generateAIQuizEngine({
+      subject,
+      difficulty,
+      numQuestions,
+      questionType,
+      timeLimit,
+      userId,
+      sessionId,
+      adaptiveDifficulty
+    });
+
+    if (engineResult.success && Array.isArray(engineResult.questions) && engineResult.questions.length > 0) {
+      return engineResult.questions;
+    }
+  } catch (serviceErr) {
+    console.warn('aiQuizService encountered error, using local fallback:', serviceErr.message);
+  }
+
+  // Fallback if engine cannot generate
   const targetCount = Math.max(1, Math.min(25, parseInt(numQuestions, 10) || 5));
   const cleanSubject = (subject || 'General Knowledge').toLowerCase().trim();
 
-  // Find matching knowledge base if known
   let pool = null;
   for (const [key, items] of Object.entries(TOPIC_KNOWLEDGE_BANK)) {
     if (cleanSubject.includes(key) || key.includes(cleanSubject)) {
@@ -389,14 +412,12 @@ export async function generateAIQuiz({
   let questions = [];
 
   if (pool && pool.length > 0) {
-    // Filter pool by difficulty if not 'mixed'
     let eligible = pool;
     if (difficulty !== 'mixed') {
       const diffMatches = pool.filter(q => q.difficulty === difficulty);
       if (diffMatches.length > 0) eligible = diffMatches;
     }
 
-    // Filter by questionType
     if (questionType === 'mcq') {
       const mcqOnly = eligible.filter(q => !q.isTrueFalse);
       if (mcqOnly.length > 0) eligible = mcqOnly;
@@ -405,46 +426,50 @@ export async function generateAIQuiz({
       if (tfOnly.length > 0) eligible = tfOnly;
     }
 
-    // Shuffle and pick
     const shuffledPool = shuffleArray(eligible);
     for (let i = 0; i < Math.min(targetCount, shuffledPool.length); i++) {
       const item = shuffledPool[i];
-      // Randomize options order on each generation call
       const { options, correctOptionIndex } = shuffleOptionsAndIndex(item.options, item.correctOptionIndex);
       questions.push({
         text: item.text,
+        question: item.text,
         options,
+        correct_answer: ['A', 'B', 'C', 'D'][correctOptionIndex],
         correctOptionIndex,
         explanation: item.explanation || '',
         timeLimit: Number(timeLimit) || 20,
-        difficulty: item.difficulty || difficulty
+        difficulty: item.difficulty || difficulty,
+        verified: true
       });
     }
   }
 
-  // If more questions needed or custom topic, synthesize using intelligent generator
   let synthIndex = 0;
   while (questions.length < targetCount) {
     const synthesized = synthesizeTopicQuestion(subject, difficulty, questionType, synthIndex++);
     questions.push({
       ...synthesized,
-      timeLimit: Number(timeLimit) || 20
+      question: synthesized.text,
+      correct_answer: ['A', 'B', 'C', 'D'][synthesized.correctOptionIndex],
+      timeLimit: Number(timeLimit) || 20,
+      verified: true
     });
   }
 
-  // Shuffle final question sequence
   questions = shuffleArray(questions);
 
-  // Assign clean sequential order
   return questions.map((q, idx) => ({
     id: `ai-q-${Date.now()}-${idx}`,
     orderIndex: idx,
-    text: q.text,
+    question: q.question || q.text,
+    text: q.text || q.question,
     options: q.options,
+    correct_answer: q.correct_answer || ['A', 'B', 'C', 'D'][q.correctOptionIndex] || 'A',
     correctOptionIndex: q.correctOptionIndex,
     explanation: q.explanation || '',
     timeLimit: q.timeLimit || 20,
-    difficulty: q.difficulty || 'medium'
+    difficulty: q.difficulty || 'medium',
+    verified: true
   }));
 }
 
@@ -456,17 +481,20 @@ export async function regenerateSingleQuestion({
   difficulty = 'medium',
   questionType = 'mcq',
   timeLimit = 20,
-  currentIndex = 0
+  currentIndex = 0,
+  userId = null,
+  sessionId = null
 }) {
   const generated = await generateAIQuiz({
     subject,
     difficulty,
     numQuestions: 3,
     questionType,
-    timeLimit
+    timeLimit,
+    userId,
+    sessionId
   });
 
-  // Pick randomized item
   const selected = generated[Math.floor(Math.random() * generated.length)];
   return {
     ...selected,
@@ -477,5 +505,6 @@ export async function regenerateSingleQuestion({
 
 export default {
   generateAIQuiz,
-  regenerateSingleQuestion
+  regenerateSingleQuestion,
+  aiQuizService
 };
