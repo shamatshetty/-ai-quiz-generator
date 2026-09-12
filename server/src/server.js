@@ -84,6 +84,15 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`=============================================`);
 });
 
+// Process error handlers for hosting resilience & diagnostic logs
+process.on('uncaughtException', (err) => {
+  console.error('🔥 [Server Uncaught Exception]:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️ [Server Unhandled Rejection]:', reason);
+});
+
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n🛑 Gracefully shutting down server...');

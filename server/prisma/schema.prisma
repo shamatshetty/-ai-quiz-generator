@@ -138,3 +138,23 @@ model AskedQuestionHistory {
   @@index([createdAt])
 }
 
+model StudentNotification {
+  id             String    @id @default(cuid())
+  userId         String?
+  type           String
+  title          String
+  message        String
+  roomCode       String?
+  quizTitle      String
+  subject        String
+  timeLimit      Int?      @default(20)
+  totalQuestions Int?      @default(0)
+  hostName       String?   @default("Teacher")
+  isLive         Boolean?  @default(false)
+  read           Boolean?  @default(false)
+  createdAt      DateTime? @default(now())
+
+  @@index([createdAt])
+  @@index([roomCode])
+}
+

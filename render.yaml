@@ -1,3 +1,9 @@
+databases:
+  - name: quizpop-postgres
+    databaseName: quizpop
+    user: quizpop_user
+    plan: free
+
 services:
   - type: web
     name: quizpop-classroom
@@ -10,3 +16,9 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quizpop-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
