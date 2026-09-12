@@ -103,7 +103,7 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
       // 3. Desktop OS notification if window is minimized or user is on another tab
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         try {
-          const isLive = notif.isLive || notif.type === 'LIVE_ROOM';
+          const isLive = Boolean(notif.isLive);
           const title = isLive
             ? `⚡ Live Quiz Started: ${notif.quizTitle}`
             : notif.title || 'Classroom Notification';
@@ -131,12 +131,23 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
       }, 10000);
     };
 
+    const handleRoomEnded = ({ roomCode }) => {
+      setNotifications((prev) =>
+        prev.map((n) => (n.roomCode === roomCode ? { ...n, isLive: false } : n))
+      );
+      setLiveToast((curr) => (curr?.roomCode === roomCode ? null : curr));
+    };
+
     socket.on('classroom:notification', handleNewNotification);
     socket.on('student:quiz-hosted', handleNewNotification);
+    socket.on('classroom:room-ended', handleRoomEnded);
+    socket.on('classroom:notification-updated', handleRoomEnded);
 
     return () => {
       socket.off('classroom:notification', handleNewNotification);
       socket.off('student:quiz-hosted', handleNewNotification);
+      socket.off('classroom:room-ended', handleRoomEnded);
+      socket.off('classroom:notification-updated', handleRoomEnded);
     };
   }, [socket, user]);
 
@@ -210,10 +221,10 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
 
   const filteredNotifications = useMemo(() => {
     if (activeNotifFilter === 'live') {
-      return notifications.filter((n) => n.isLive || n.type === 'LIVE_ROOM');
+      return notifications.filter((n) => Boolean(n.isLive));
     }
     if (activeNotifFilter === 'quizzes') {
-      return notifications.filter((n) => n.type === 'NEW_QUIZ' || n.type === 'TIME_SET');
+      return notifications.filter((n) => n.type === 'NEW_QUIZ' || n.type === 'TIME_SET' || (!n.isLive && n.type === 'LIVE_ROOM'));
     }
     return notifications;
   }, [notifications, activeNotifFilter]);
@@ -500,7 +511,7 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
                         : 'text-slate-400 hover:text-white hover:bg-slate-900'
                     }`}
                   >
-                    ⚡ Live ({notifications.filter((n) => n.isLive || n.type === 'LIVE_ROOM').length})
+                    ⚡ Live ({notifications.filter((n) => Boolean(n.isLive)).length})
                   </button>
                   <button
                     type="button"
@@ -542,8 +553,9 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
                   </div>
                 ) : (
                   filteredNotifications.map((n) => {
-                    const isLive = n.isLive || n.type === 'LIVE_ROOM';
+                    const isLive = Boolean(n.isLive);
                     const isTimeSet = n.type === 'TIME_SET';
+                    const isEndedLiveRoom = !isLive && n.type === 'LIVE_ROOM';
 
                     return (
                       <div
@@ -561,10 +573,12 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
                                 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
                                 : isTimeSet
                                 ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40'
+                                : isEndedLiveRoom
+                                ? 'bg-slate-800 text-slate-400 border border-slate-700'
                                 : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40'
                             }`}
                           >
-                            {isLive ? '⚡' : isTimeSet ? '⏰' : '📝'}
+                            {isLive ? '⚡' : isTimeSet ? '⏰' : isEndedLiveRoom ? '🏁' : '📝'}
                           </div>
 
                           <div className="flex-1 min-w-0">
@@ -575,10 +589,12 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
                                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                     : isTimeSet
                                     ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                    : isEndedLiveRoom
+                                    ? 'bg-slate-800 text-slate-400 border border-slate-700'
                                     : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                                 }`}
                               >
-                                {isLive ? 'Live Room Active' : isTimeSet ? 'Timer Configured' : 'Teacher Quiz'}
+                                {isLive ? 'Live Room Active' : isTimeSet ? 'Timer Configured' : isEndedLiveRoom ? 'Quiz Ended' : 'Teacher Quiz'}
                               </span>
                               <span className="text-[10px] text-slate-400">
                                 {formatRelativeTime(n.createdAt)}
@@ -611,7 +627,7 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
                                 </span>
                               )}
 
-                              {isLive && n.roomCode && (
+                              {isLive && n.roomCode ? (
                                 <button
                                   type="button"
                                   onClick={() => handleJoinFromNotification(n.roomCode)}
@@ -620,7 +636,11 @@ export default function StudentDashboard({ onJoinRoom, initialRoomCode = '', onB
                                   <Zap className="w-3.5 h-3.5" />
                                   <span>Join Live Quiz (PIN: {n.roomCode}) &rarr;</span>
                                 </button>
-                              )}
+                              ) : isEndedLiveRoom ? (
+                                <div className="w-full mt-2 py-1.5 px-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-400 font-semibold text-[11px] flex items-center justify-center gap-1.5">
+                                  <span>✓ Live quiz completed (Session closed)</span>
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                         </div>

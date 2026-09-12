@@ -196,7 +196,7 @@ export function setupSocketHandlers(io) {
     clearBotTimers(roomCode);
 
     try {
-      await notificationService.markRoomEnded(roomCode);
+      await notificationService.markRoomEnded(roomCode, io);
     } catch (e) {
       console.warn('Could not mark notification room ended:', e.message);
     }

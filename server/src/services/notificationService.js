@@ -195,7 +195,7 @@ class NotificationService {
   /**
    * Mark room as no longer live when quiz ends or host closes it
    */
-  async markRoomEnded(roomCode) {
+  async markRoomEnded(roomCode, io = null) {
     if (!roomCode) return;
     try {
       await this.ensureTable();
@@ -213,6 +213,11 @@ class NotificationService {
         n.isLive = false;
       }
     });
+
+    if (io) {
+      io.emit('classroom:room-ended', { roomCode });
+      io.emit('classroom:notification-updated', { roomCode, isLive: false });
+    }
   }
 
   /**
@@ -220,6 +225,12 @@ class NotificationService {
    */
   async getNotifications({ roomManager = null } = {}) {
     await this.ensureTable();
+
+    const isRoomActive = (code, dbIsLive) => {
+      if (!roomManager || !code) return Boolean(dbIsLive);
+      const activeRoom = roomManager.getRoom(code);
+      return Boolean(activeRoom && activeRoom.status !== 'PODIUM' && activeRoom.status !== 'ENDED');
+    };
 
     let list = [];
     try {
@@ -234,7 +245,7 @@ class NotificationService {
       if (rows && rows.length > 0) {
         list = rows.map(r => ({
           ...r,
-          isLive: roomManager && r.roomCode ? !!roomManager.getRoom(r.roomCode) : Boolean(r.isLive),
+          isLive: isRoomActive(r.roomCode, r.isLive),
           createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString()
         }));
       }
@@ -245,7 +256,10 @@ class NotificationService {
 
     // Merge with in-memory if Postgres was empty or partial
     if (list.length === 0) {
-      list = notificationManager.getNotifications();
+      list = notificationManager.getNotifications().map(n => ({
+        ...n,
+        isLive: isRoomActive(n.roomCode, n.isLive)
+      }));
     }
 
     return list;

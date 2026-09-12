@@ -60,7 +60,7 @@ export default function OverviewTab({
   const currentStreak = currentUserRank?.streak || (history.length > 0 ? history[0].streak || 3 : 1);
 
   const recentQuizzes = history.slice(0, 3);
-  const activeLiveQuiz = notifications.find((n) => n.isLive || n.type === 'LIVE_ROOM');
+  const activeLiveQuiz = notifications.find((n) => Boolean(n.isLive));
 
   return (
     <div className="space-y-6 animate-tab-enter text-white">
